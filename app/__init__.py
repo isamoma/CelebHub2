@@ -11,9 +11,8 @@ DB = SQLAlchemy()
 login_manager = LoginManager()
 login_manager.login_view = 'admin.login'
 csrf = CSRFProtect()
-
+app = Flask(__name__, instance_relative_config=True)
 def create_app():
-    app = Flask(__name__, instance_relative_config=True)
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-change-this')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///{}'.format(
         os.path.join(os.path.dirname(__file__), '..', 'data.db')
