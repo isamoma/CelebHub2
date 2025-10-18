@@ -31,10 +31,22 @@ def index():
 def profile(slug):
     celeb = Celebrity.query.filter_by(slug=slug).first_or_404()
     return render_template('profile.html', celeb=celeb)
+@main_bp.route('/')
+def home():
+    # Show only featured celebs on homepage
+    featured_celebs = Celebrity.query.filter_by(is_featured=True).all()
+    return render_template('index.html', celebs=featured_celebs)
+
+@main_bp.route('/celebrities')
+def celebrities():
+    # Show all celebs
+    all_celebs = Celebrity.query.all()
+    return render_template('celebrities.html', celebs=all_celebs)
 
 @main_bp.route('/featured')
 def featured():
     return render_template('featured.html')
+
 
 import requests, base64
 from datetime import datetime
@@ -176,4 +188,11 @@ def delete_celeb(cid):
     DB.session.delete(celeb)
     DB.session.commit()
     flash('Deleted', 'success')
+    return redirect(url_for('admin.dashboard'))
+@admin_bp.route('/toggle_feature/<int:celeb_id>', methods=['POST'])
+@login_required
+def toggle_feature(celeb_id):
+    celeb = Celebrity.query.get_or_404(celeb_id)
+    celeb.is_featured = not celeb.is_featured
+    DB.session.commit()
     return redirect(url_for('admin.dashboard'))

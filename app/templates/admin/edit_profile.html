@@ -31,6 +31,14 @@
     </div>
     <div class="flex items-center gap-3">
       {{ form.is_featured() }} {{ form.is_featured.label() }}
+     <form action="{{ url_for('admin.toggle_feature', celeb_id=celeb.id) }}" method="POST">
+      <button type="submit" class="bg-yellow-500 text-white px-3 py-1 rounded">
+        {% if celeb.is_featured %}
+        Unfeature
+        {% else %}
+        Feature
+        {% endif %}
+    </button> 
     </div>
     <div>
       <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Save</button>
