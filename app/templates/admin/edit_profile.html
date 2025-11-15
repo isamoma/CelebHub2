@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-md p-6">
+  <h2 class="text-xl font-semibold mb-4">{{ 'Edit Celebrity' if celeb else 'Add Celebrity' }}</h2>
+  <form method="POST" enctype="multipart/form-data" class="space-y-4">
+    {{ form.hidden_tag() }}
+    <div>
+      {{ form.name.label(class="block text-sm font-medium") }}
+      {{ form.name(class="w-full border-gray-300 rounded-lg mt-1 p-2") }}
+    </div>
+    <div>
+      {{ form.slug.label(class="block text-sm font-medium") }}
+      {{ form.slug(class="w-full border-gray-300 rounded-lg mt-1 p-2") }}
+    </div>
+    <div>
+      {{ form.category.label(class="block text-sm font-medium") }}
+      {{ form.category(class="w-full border-gray-300 rounded-lg mt-1 p-2") }}
+    </div>
+    <div>
+      {{ form.photo.label(class="block text-sm font-medium") }}
+      {{ form.photo(class="w-full border-gray-300 rounded-lg mt-1 p-2") }}
+    </div>
+    <div>
+      {{ form.bio.label(class="block text-sm font-medium") }}
+      {{ form.bio(class="w-full border-gray-300 rounded-lg mt-1 p-2", rows=4) }}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div>{{ form.youtube.label() }}{{ form.youtube(class="w-full border-gray-300 rounded-lg mt-1 p-2") }}</div>
+      <div>{{ form.tiktok.label() }}{{ form.tiktok(class="w-full border-gray-300 rounded-lg mt-1 p-2") }}</div>
+      <div>{{ form.spotify.label() }}{{ form.spotify(class="w-full border-gray-300 rounded-lg mt-1 p-2") }}</div>
+    </div>
+    <div class="mb-4">
+        <label class="inline-flex items-center">
+            {{ form.featured(class="h-5 w-5 text-blue-500") }}
+            <span class="ml-2 text-gray-700">Feature this celebrity</span>
+        </label>
+    </div>
+
+    </div>
+    <div>
+      <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

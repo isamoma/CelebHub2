@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: celebhub
+    env: python
+    region: oregon
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn run:app"
+    plan: free
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        value: your_secret_key
+      - key: MPESA_CONSUMER_KEY
+        sync: false
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      - key: MPESA_PASSKEY
+        sync: false
+      - key: MPESA_SHORTCODE
+        value: "174379"
+      - key: MPESA_CALLBACK_URL
+        value: "https://celebhub.onrender.com/mpesa/callback"
