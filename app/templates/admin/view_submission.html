@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 class="text-3xl font-bold text-indigo-600 mb-6">Submission Details</h1>
+
+<div class="bg-white rounded-xl shadow p-6">
+
+    <h2 class="text-2xl font-semibold">{{ sub.name }}</h2>
+
+    <p class="mt-3"><strong>Category:</strong> {{ sub.category }}</p>
+    <p><strong>Phone:</strong> {{ sub.phone }}</p>
+    <p><strong>Submitted:</strong> {{ sub.created_at.strftime("%Y-%m-%d %H:%M") }}</p>
+
+    <div class="mt-4">
+        <h3 class="font-semibold">Bio:</h3>
+        <p class="bg-gray-50 p-3 rounded">{{ sub.bio }}</p>
+    </div>
+
+    <div class="mt-4">
+        {% if sub.photo_filename %}
+            <img src="{{ url_for('static', filename='uploads/' ~ sub.photo_filename) }}"
+                 class="w-64 h-64 object-cover rounded shadow" />
+        {% else %}
+            <p class="text-gray-500 italic">No photo uploaded.</p>
+        {% endif %}
+    </div>
+
+    <div class="mt-6 flex gap-4">
+
+        <form action="{{ url_for('admin.approve_submission', id=sub.id) }}" method="POST">
+            <button class="bg-green-600 text-white px-6 py-2 rounded">Approve</button>
+        </form>
+
+        <form action="{{ url_for('admin.reject_submission', id=sub.id) }}" method="POST">
+            <button class="bg-red-600 text-white px-6 py-2 rounded">Reject</button>
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

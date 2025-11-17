@@ -32,3 +32,33 @@ class User(UserMixin, DB.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+class CelebritySubmission(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    name = DB.Column(DB.String(120), nullable=False)
+    email = DB.Column(DB.String(120), nullable=False)
+    phone = DB.Column(DB.String(60), nullable=False)
+    category = DB.Column(DB.String(120))
+    bio = DB.Column(DB.Text)
+    youtube = DB.Column(DB.String(255))
+    tiktok = DB.Column(DB.String(255))
+    spotify = DB.Column(DB.String(255))
+    photo_filename = DB.Column(DB.String(255))
+    status = DB.Column(DB.String(20), default="pending")  # pending / approved / rejected
+    created_at = DB.Column(DB.DateTime, default=datetime.utcnow)
+
+from datetime import datetime
+
+class OnboardingRegistration(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    name = DB.Column(DB.String(120), nullable=False)
+    email = DB.Column(DB.String(120), nullable=False)
+    phone = DB.Column(DB.String(50), nullable=False)
+    message = DB.Column(DB.Text)
+    status = DB.Column(DB.String(20), default="pending")
+    created_at = DB.Column(DB.DateTime, default=datetime.utcnow)
+      
+
+
+
+

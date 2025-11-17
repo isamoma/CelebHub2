@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, BooleanField, FileField, SubmitField
+from wtforms import StringField, PasswordField, TextAreaField, BooleanField, FileField, SubmitField,EmailField
 from wtforms.validators import DataRequired, Length, Optional, URL ,Email
 
 class LoginForm(FlaskForm):
@@ -29,3 +29,20 @@ class ContactForm(FlaskForm):
     email = StringField('Your Email', validators=[DataRequired(), Email()])
     message = TextAreaField('Your Message', validators=[DataRequired(), Length(min=10)])
     submit = SubmitField('Send Message')
+
+class CelebritySubmissionForm(FlaskForm):
+    name = StringField("Full Name", validators=[DataRequired()])
+    email = StringField("Email", validators=[DataRequired(), Email()])
+    phone = StringField("Phone Number", validators=[DataRequired()])
+    category = StringField("Category (Musician, Actor, Influencer...)", validators=[DataRequired()])
+    bio = TextAreaField("Short Bio", validators=[DataRequired()])
+    youtube = StringField("YouTube Link")
+    tiktok = StringField("TikTok Link")
+    spotify = StringField("Spotify Link")
+    photo = FileField("Profile Photo")
+class OnboardingForm(FlaskForm):
+    name = StringField("Full Name", validators=[DataRequired(), Length(min=2, max=120)])
+    email = EmailField("Email", validators=[DataRequired(), Email()])
+    phone = StringField("Phone Number", validators=[DataRequired(), Length(min=9, max=20)])
+    message = TextAreaField("Tell us why you want to join CelebHub", validators=[Length(max=500)])
+    submit = SubmitField("Submit")

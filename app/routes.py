@@ -1,10 +1,10 @@
 import os
 from flask import Blueprint, render_template, current_app, request, redirect, url_for, flash
-from .models import Celebrity, User
+from .models import Celebrity, User,CelebritySubmission,OnboardingRegistration
 from . import DB, login_manager
 from flask_login import login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
-from .forms import LoginForm, CelebrityForm ,DeleteCelebrityForm,FeaturedForm,ContactForm
+from .forms import LoginForm, CelebrityForm ,DeleteCelebrityForm,FeaturedForm,ContactForm,CelebritySubmissionForm,OnboardingForm
 from flask_mail import Message
 from app import mail
 
@@ -99,6 +99,133 @@ def contact():
 
     return render_template('contact.html', form=form)
 
+@main_bp.route('/faqs')
+def faqs():
+    faq_data ={
+        "1. What is CelebHub?": "CelebHub is a central platform showcasing verified Kenyan celebrities, influencers, artists, content creators, and public figures. Our goal is to make it easy for fans, brands, and event planners to discover, connect, and engage with Kenyan talent.",
+        "2. How can I contact a celebrity featured on CelebHub?": "Each celebrity profile includes links to their official social media pages, YouTube channel,TikTok account, and Spotify listings. We do not share private contact details unless publicly available.",
+        "3. Can I feature my celebrity profile on CelebHub?":"Yes. Public figures, artists, creators, and influencers can request a featured profile upgrade by submitting a payment through our official page. Once payment is confirmed, your profile will appear at the top of the homepage.",
+        "4. Is there a fee to get featured?":"Yes. Celebrities pay a small one-time fee of Ksh 500 to appear under the “Featured Celebrities” section. This helps with verification, design, and platform maintenance.",
+        "5. How long does a featured listing last?":"Featured listings last 30 days. You may renew your listing at any time by repeating the payment process.",
+        "6. Is CelebHub official or government certified?":"No. CelebHub is an independent platform built to promote Kenyan talent and simplify access to their public profiles. We do not impersonate or claim official representation.",
+        "7. How does CelebHub verify celebrity accounts?":"Our verification team manually checks the social media pages and activity of each celebrity before approving their profile on our platform.",
+        "8. Can fans create profiles on CelebHub?":"No. Only celebrities, artists, creators, and influencers are allowed to have profiles. Fan accounts are not supported.",
+        "9. How do I request a correction or update to my profile?":"If you are a celebrity with an existing profile, you can reach us via the Contact Page and our admin team will review and update your information.",
+        "10. How can brands collaborate with celebrities through CelebHub?":"Brands looking for partnerships, ads, or influencer collaborations can use our Contact Page to reach us. We will assist in connecting you to the appropriate celebrity when possible."
+    }
+
+    return render_template('faqs.html', faqs=faq_data)
+
+@main_bp.route('/onboarding', methods=['GET', 'POST'])
+def onboarding():
+    form = OnboardingForm()
+
+    if form.validate_on_submit():
+        # Save to DB
+        record = OnboardingRegistration(
+            name=form.name.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            message=form.message.data
+        )
+        DB.session.add(record)
+        DB.session.commit()
+
+        # Admin notification (Brevo)
+        api_key = os.getenv("BREVO_API_KEY")
+        admin_email = os.getenv("MAIL_TO")
+
+        payload = {
+            "sender": {"name": "CelebHub Notifications", "email": "no-reply@celebhub.co.ke"},
+            "to": [{"email": admin_email}],
+            "subject": "New User Onboarding Registration",
+            "htmlContent": f"""
+                <h2>New Onboarding Registration</h2>
+                <p><strong>Name:</strong> {form.name.data}</p>
+                <p><strong>Email:</strong> {form.email.data}</p>
+                <p><strong>Phone:</strong> {form.phone.data}</p>
+                <p><strong>Message:</strong> {form.message.data}</p>
+                <p>Submitted on: {record.created_at}</p>
+            """
+        }
+
+        headers = {
+            "api-key": api_key,
+            "Content-Type": "application/json"
+        }
+
+        try:
+            requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+        except Exception:
+            pass  # Disable errors from breaking the page
+
+        flash("Thank you! You have successfully joined our onboarding list.", "success")
+        return redirect(url_for("main.onboarding"))
+
+    return render_template('onboarding.html', form=form)
+
+
+@main_bp.route('/submit-celebrity', methods=['GET', 'POST'])
+def submit_celeb():
+    form = CelebritySubmissionForm()
+
+    if form.validate_on_submit():
+
+        # 📌 Save uploaded photo
+        photo = form.photo.data
+        filename = None
+        if photo:
+            filename = secure_filename(photo.filename)
+            photo.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+
+        # 📌 Save to database
+        submission = CelebritySubmission(
+            name=form.name.data,
+            email=form.email.data,
+            phone=form.phone.data,
+            category=form.category.data,
+            bio=form.bio.data,
+            youtube=form.youtube.data,
+            tiktok=form.tiktok.data,
+            spotify=form.spotify.data,
+            photo_filename=filename
+        )
+
+        DB.session.add(submission)
+        DB.session.commit()
+
+        # 📩 Send admin notification (Brevo)
+        api_key = os.getenv("BREVO_API_KEY")
+        admin_email = os.getenv("MAIL_TO")
+
+        payload = {
+            "sender": {"name": "CelebHub Submission", "email": "no-reply@celebhub.co.ke"},
+            "to": [{"email": admin_email}],
+            "subject": "New Celebrity Submission",
+            "htmlContent": f"""
+                <h2>New Celebrity Submission</h2>
+                <p><strong>Name:</strong> {form.name.data}</p>
+                <p><strong>Email:</strong> {form.email.data}</p>
+                <p><strong>Phone:</strong> {form.phone.data}</p>
+                <p><strong>Category:</strong> {form.category.data}</p>
+                <p><strong>Bio:</strong> {form.bio.data}</p>
+                <p>Status: <strong>Pending Review</strong></p>
+            """
+        }
+
+        headers = {
+            "api-key": api_key,
+            "Content-Type": "application/json"
+        }
+
+        requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+
+        flash("Your profile has been submitted! Admin will review it shortly.", "success")
+        return redirect(url_for('main.submit_celeb'))
+
+    return render_template('submit_celeb.html', form=form)
+
+
     
 # Admin routes
 @admin_bp.route('/login', methods=['GET','POST'])
@@ -119,6 +246,39 @@ def login():
 def celebrities():
     celebs = Celebrity.query.order_by(Celebrity.created_at.desc()).all()
     return render_template('admin/celebrities.html', celebs=celebs ,form=FeaturedForm)
+@admin_bp.route('/submissions')
+@login_required
+def submissions():
+    pending_submissions = CelebritySubmission.query.filter_by(status="pending").order_by(CelebritySubmission.created_at.desc()).all()
+    return render_template('admin/submissions.html', submissions=pending_submissions)
+@admin_bp.route('/submissions/<int:id>')
+@login_required
+def view_submission(id):
+    sub = CelebritySubmission.query.get_or_404(id)
+    return render_template('admin/view_submission.html', sub=sub)
+@admin_bp.route('/submission/<int:id>/approve', methods=['POST'])
+@login_required
+def approve_submission(id):
+    sub = CelebritySubmission.query.get_or_404(id)
+    sub.status = "approved"
+    DB.session.commit()
+    flash("Submission approved!", "success")
+    return redirect(url_for('admin/view_submission'))
+    
+@admin_bp.route('/submission/<int:id>/reject', methods=['POST'])
+@login_required
+def reject_submission(id):
+    sub = CelebritySubmission.query.get_or_404(id)
+    sub.status = "rejected"
+    DB.session.commit()
+    flash("Submission rejected.", "danger")
+    return redirect(url_for('admin/view_submission'))
+@admin_bp.route('/onboarding-users')
+@login_required
+def onboarding_users():
+    users = OnboardingRegistration.query.order_by(OnboardingRegistration.created_at.desc()).all()
+    return render_template('admin/onboarding_users.html', users=users)
+
 
 @admin_bp.route('/logout')
 @login_required
