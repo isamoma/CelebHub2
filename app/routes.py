@@ -241,6 +241,15 @@ def login():
             return redirect(url_for('admin.dashboard'))
         flash('Invalid credentials', 'danger')
     return render_template('admin/login.html', form=form)
+@admin_bp.route('/create_admin')
+def create_admin():
+    from .models import User
+    u = User(username="admin")
+    u.set_password("admin123")
+    DB.session.add(u)
+    DB.session.commit()
+    return "Admin created!"
+
 @admin_bp.route('/celebrities')
 @login_required
 def celebrities():
