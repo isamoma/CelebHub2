@@ -50,6 +50,14 @@ def about():
     return render_template('about.html')
 import requests
 from flask import current_app
+@main_bp.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+@main_bp.route("/terms")
+def terms():
+    return render_template("terms.html")
+
 
 @main_bp.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -269,10 +277,25 @@ def view_submission(id):
 @login_required
 def approve_submission(id):
     sub = CelebritySubmission.query.get_or_404(id)
+
+    # Create a new Celebrity from submitted data
+    new_celeb = Celebrity(
+        name=sub.name,
+        category=sub.category,
+        phone=sub.phone,
+        bio=sub.bio,
+        image=sub.image
+    )
+
+    DB.session.add(new_celeb)
+
+    # Update submission status
     sub.status = "approved"
     DB.session.commit()
-    flash("Submission approved!", "success")
-    return redirect(url_for('admin/view_submission'))
+
+    flash("Submission approved and added to Celebrities!", "success")
+    return redirect(url_for('admin.submissions'))
+
     
 @admin_bp.route('/submission/<int:id>/reject', methods=['POST'])
 @login_required

@@ -46,6 +46,7 @@ class CelebritySubmission(DB.Model):
     photo_filename = DB.Column(DB.String(255))
     status = DB.Column(DB.String(20), default="pending")  # pending / approved / rejected
     created_at = DB.Column(DB.DateTime, default=datetime.utcnow)
+    
 
 from datetime import datetime
 

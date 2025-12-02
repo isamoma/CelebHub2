@@ -9,6 +9,28 @@
       <h2 class="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">M-Pesa</h2>
       <p class="text-gray-600 dark:text-gray-400 mb-4">Enter Your Mpesa No. and pay Ksh.500 to Featured</p>
       <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+      <button onclick="payNow()" class="btn btn-success">Pay 500 KES</button>
+
+            <script>
+            function payNow() {
+                const phone = prompt("Enter your MPESA phone number (2547...):");
+
+                fetch("/pay", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        phone: phone,
+                        amount: 500
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    alert("Payment request sent! Check your phone.");
+                    console.log(data);
+                });
+            }
+            </script>
+
       <form id="mpesaForm" class="space-y-4">
           <input type="tel" name="phone" placeholder="2547XXXXXXXX" required
                 class="border p-2 rounded w-full">
