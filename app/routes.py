@@ -454,3 +454,15 @@ def mpesa_payment():
 
     res = requests.post("https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest", json=payload, headers=headers)
     return jsonify(res.json())
+@app.route('/mpesa/token')
+def generate_token():
+    import requests, os
+    from requests.auth import HTTPBasicAuth
+
+    key = os.getenv("MPESA_CONSUMER_KEY")
+    secret = os.getenv("MPESA_CONSUMER_SECRET")
+
+    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    response = requests.get(url, auth=HTTPBasicAuth(key, secret))
+
+    return response.json()
