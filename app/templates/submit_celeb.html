@@ -2,60 +2,60 @@
 {% block content %}
 
 <div class="max-w-3xl mx-auto py-12">
-    <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">
+    <h1 class="text-3xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6">
         Celebrity Submission Form
     </h1>
 
-    <p class="text-center text-gray-600 mb-8">
+    <p class="text-center text-gray-600 dark:text-gray-400 mb-8">
         Are you a Kenyan celebrity or creator? Submit your details below to get verified and added to CelebHub.
     </p>
 
-    <form action="" method="POST" enctype="multipart/form-data" class="space-y-6 bg-white p-6 shadow rounded-xl">
+    <form action="" method="POST" enctype="multipart/form-data" class="space-y-6 bg-white dark:bg-gray-800 p-6 shadow rounded-xl">
         {{ form.hidden_tag() }}
 
         <div>
-            {{ form.name.label(class="block text-gray-700 font-semibold") }}
-            {{ form.name(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.name.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.name(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <div>
-            {{ form.email.label(class="block text-gray-700 font-semibold") }}
-            {{ form.email(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.email.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.email(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <div>
-            {{ form.phone.label(class="block text-gray-700 font-semibold") }}
-            {{ form.phone(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.phone.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.phone(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <div>
-            {{ form.category.label(class="block text-gray-700 font-semibold") }}
-            {{ form.category(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.category.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.category(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <div>
-            {{ form.bio.label(class="block text-gray-700 font-semibold") }}
-            {{ form.bio(class="w-full mt-2 p-2 border rounded-lg h-28") }}
+            {{ form.bio.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.bio(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white h-28") }}
         </div>
 
         <div>
-            {{ form.youtube.label(class="block text-gray-700 font-semibold") }}
-            {{ form.youtube(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.youtube.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.youtube(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <div>
-            {{ form.tiktok.label(class="block text-gray-700 font-semibold") }}
-            {{ form.tiktok(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.tiktok.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.tiktok(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <div>
-            {{ form.spotify.label(class="block text-gray-700 font-semibold") }}
-            {{ form.spotify(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.spotify.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.spotify(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <div>
-            {{ form.photo.label(class="block text-gray-700 font-semibold") }}
-            {{ form.photo(class="w-full mt-2 p-2 border rounded-lg") }}
+            {{ form.photo.label(class="block text-gray-700 dark:text-gray-300 font-semibold") }}
+            {{ form.photo(class="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white") }}
         </div>
 
         <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg text-lg hover:bg-indigo-700">

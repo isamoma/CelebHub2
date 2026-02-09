@@ -2,16 +2,16 @@
 {% block content %}
 
 <div class="max-w-4xl mx-auto py-12">
-    <h1 class="text-4xl font-bold text-center mb-8 text-indigo-600">Frequently Asked Questions (FAQs)</h1>
+    <h1 class="text-4xl font-bold text-center mb-8 text-indigo-600 dark:text-indigo-400">Frequently Asked Questions (FAQs)</h1>
 
     <div class="space-y-4">
         {% for q, a in faqs.items() %}
-        <div class="border border-gray-200 rounded-xl overflow-hidden">
-            <button onclick="toggleFAQ('faq{{ loop.index }}')" class="w-full text-left px-6 py-4 bg-gray-100 hover:bg-gray-200 flex justify-between items-center">
+        <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <button onclick="toggleFAQ('faq{{ loop.index }}')" class="w-full text-left px-6 py-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex justify-between items-center dark:text-white">
                 <span class="text-lg font-semibold">{{ q }}</span>
                 <span id="icon{{ loop.index }}">+</span>
             </button>
-            <div id="faq{{ loop.index }}" class="hidden px-6 py-4 bg-white text-gray-700">
+            <div id="faq{{ loop.index }}" class="hidden px-6 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-400">
                 {{ a }}
             </div>
         </div>

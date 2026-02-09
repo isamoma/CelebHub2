@@ -1,24 +1,24 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="mb-6">
-  <h1 class="text-3xl font-bold text-center">Featured Kenyan Celebrities 🌟</h1>
-  <p class="text-center text-gray-600 mt-2">Discover Kenya's top artists, actors, and creators.</p>
+  <h1 class="text-3xl font-bold text-center dark:text-white">Featured Kenyan Celebrities 🌟</h1>
+  <p class="text-center text-gray-600 dark:text-gray-400 mt-2">Discover Kenya's top artists, actors, and creators.</p>
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
   {% for c in celebs %}
-  <article class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition">
+  <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition">
     {% if c.photo_url %}
     <img src="{{ c.photo_url }}" alt="{{ c.name }}" class="w-full h-44 object-cover">
     {% else %}
-    <div class="w-full h-44 bg-gray-100 flex items-center justify-center text-gray-400">No image</div>
+    <div class="w-full h-44 bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500">No image</div>
     {% endif %}
     <div class="p-4">
-      <h2 class="text-xl font-semibold text-indigo-600">{{ c.name }}</h2>
-      <p class="text-gray-600 mt-2 line-clamp-3">{{ c.bio or '' }}</p>
+      <h2 class="text-xl font-semibold text-indigo-600 dark:text-indigo-400">{{ c.name }}</h2>
+      <p class="text-gray-600 dark:text-gray-400 mt-2 line-clamp-3">{{ c.bio or '' }}</p>
       <div class="mt-4 flex items-center justify-between">
-        <a href="{{ url_for('main.profile', slug=c.slug) }}" class="text-indigo-500 font-medium hover:underline">View Profile →</a>
-        <span class="text-sm text-gray-500">{{ c.category or '' }}</span>
+        <a href="{{ url_for('main.profile', slug=c.slug) }}" class="text-indigo-500 dark:text-indigo-400 font-medium hover:underline">View Profile →</a>
+        <span class="text-sm text-gray-500 dark:text-gray-400">{{ c.category or '' }}</span>
       </div>
     </div>
   </article>

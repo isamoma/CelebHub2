@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-md p-6">
+<div class="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6">
   <div class="flex flex-col md:flex-row gap-6">
     {% if celeb.photo_url %}
     <img src="{{ celeb.photo_url }}" alt="{{ celeb.name }}" class="w-48 h-48 object-cover rounded-xl shadow">
     {% else %}
-    <div class="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">No image</div>
+    <div class="w-48 h-48 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center text-gray-400 dark:text-gray-500">No image</div>
     {% endif %}
     <div class="flex-1">
-      <h1 class="text-3xl font-bold text-indigo-600">{{ celeb.name }}</h1>
-      <p class="text-gray-600 mt-3">{{ celeb.bio }}</p>
+      <h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{{ celeb.name }}</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-3">{{ celeb.bio }}</p>
       <div class="mt-4 space-y-3">
         {% if celeb.youtube %}
         <div>
-          <h3 class="font-semibold">Video</h3>
+          <h3 class="font-semibold dark:text-gray-200">Video</h3>
           <div class="mt-2">
             <iframe width="560" height="315" src="{{ celeb.youtube }}" frameborder="0" allowfullscreen class="w-full rounded-lg"></iframe>
           </div>
@@ -21,14 +21,14 @@
         {% endif %}
         {% if celeb.tiktok %}
         <div>
-          <h3 class="font-semibold">TikTok</h3>
-          <a href="{{ celeb.tiktok }}" target="_blank" class="text-indigo-500 hover:underline">{{ celeb.tiktok }}</a>
+          <h3 class="font-semibold dark:text-gray-200">TikTok</h3>
+          <a href="{{ celeb.tiktok }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">{{ celeb.tiktok }}</a>
         </div>
         {% endif %}
         {% if celeb.spotify %}
         <div>
-          <h3 class="font-semibold">Music</h3>
-          <a href="{{ celeb.spotify }}" target="_blank" class="text-indigo-500 hover:underline">{{ celeb.spotify }}</a>
+          <h3 class="font-semibold dark:text-gray-200">Music</h3>
+          <a href="{{ celeb.spotify }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">{{ celeb.spotify }}</a>
         </div>
         {% endif %}
       </div>

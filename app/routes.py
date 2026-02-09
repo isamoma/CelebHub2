@@ -13,19 +13,19 @@ ALLOWED_EXT = {'png','jpg','jpeg','gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXT
-+
-+
-+def generate_unique_slug(name):
-+    # Basic slugify
-+    base = re.sub(r'[^a-z0-9]+', '-', (name or '').lower()).strip('-') or 'celeb'
-+    candidate = base
-+    idx = 1
-+    # Query existing slugs that start with base
-+    existing = {s.slug for s in Celebrity.query.filter(Celebrity.slug.like(f"{base}%")).all()}
-+    while candidate in existing:
-+        idx += 1
-+        candidate = f"{base}-{idx}"
-+    return candidate
+
+
+def generate_unique_slug(name):
+    # Basic slugify
+    base = re.sub(r'[^a-z0-9]+', '-', (name or '').lower()).strip('-') or 'celeb'
+    candidate = base
+    idx = 1
+    # Query existing slugs that start with base
+    existing = {s.slug for s in Celebrity.query.filter(Celebrity.slug.like(f"{base}%")).all()}
+    while candidate in existing:
+        idx += 1
+        candidate = f"{base}-{idx}"
+    return candidate
 
 main_bp = Blueprint('main', __name__)
 admin_bp = Blueprint('admin', __name__)
