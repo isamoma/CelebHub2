@@ -50,11 +50,22 @@ def create_app():
     if mongo_uri:
         # Use MongoEngine for production (Render)
         me.connect(host=mongo_uri)
-        global ME
-        ME = me
     else:
+        # Local development: Try to connect to local MongoDB, fall back to in-memory mock if unavailable
+        try:
+            me.connect('mongodb://localhost:27017/celebhub_local')
+        except Exception as e:
+            # If local MongoDB not available, use in-memory mock (mongoengine will work but won't persist)
+            print(f"⚠️  Local MongoDB not available: {e}")
+            print("📝 Using in-memory MongoEngine (data will not persist)")
+            me.connect('mongoenginetest')
+        
+        # Also initialize SQLAlchemy as fallback
         DB.init_app(app)
         migrate.init_app(app, DB)
+
+    global ME
+    ME = me
 
     login_manager.init_app(app)
     csrf.init_app(app)
@@ -69,7 +80,7 @@ def create_app():
     # Ensure upload folder exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-    # Create database tables for local SQLite only
+    # Create database tables for local SQLite (as backup, if needed)
     if not mongo_uri:
         with app.app_context():
             DB.create_all()

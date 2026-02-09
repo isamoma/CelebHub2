@@ -341,7 +341,7 @@ def login():
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        user = User.objects(username=username).first()
+        user = get_user_by_username(username)
         if user and user.check_password(password):
             login_user(user)
             flash('Logged in successfully', 'success')
@@ -359,24 +359,27 @@ def create_admin():
 @admin_bp.route('/celebrities')
 @login_required
 def celebrities():
-    celebs = Celebrity.objects.order_by('-created_at')
+    if USE_MONGO:
+        celebs = Celebrity.objects.order_by('-created_at')
+    else:
+        celebs = Celebrity.query.order_by(Celebrity.created_at.desc()).all()
     return render_template('admin/celebrities.html', celebs=celebs ,form=FeaturedForm)
 @admin_bp.route('/submissions')
 @login_required
 def submissions():
-    pending_submissions = CelebritySubmission.objects(status="pending").order_by('-created_at')
+    pending_submissions = get_celebrity_submissions_pending()
     return render_template('admin/submissions.html', submissions=pending_submissions)
 @admin_bp.route('/submissions/<int:id>')
 @login_required
 def view_submission(id):
-    sub = CelebritySubmission.objects(id=id).first()
+    sub = get_submission_by_id(id)
     if not sub:
         abort(404)
     return render_template('admin/view_submission.html', sub=sub)
 @admin_bp.route('/submission/<int:id>/approve', methods=['POST'])
 @login_required
 def approve_submission(id):
-    sub = CelebritySubmission.objects(id=id).first()
+    sub = get_submission_by_id(id)
     if not sub:
         abort(404)
 
@@ -407,7 +410,7 @@ def approve_submission(id):
 @admin_bp.route('/submission/<int:id>/reject', methods=['POST'])
 @login_required
 def reject_submission(id):
-    sub = CelebritySubmission.objects(id=id).first() if USE_MONGO else CelebritySubmission.query.get(id)
+    sub = get_submission_by_id(id)
     if not sub:
         abort(404)
     sub.status = "rejected"
@@ -417,7 +420,7 @@ def reject_submission(id):
 @admin_bp.route('/onboarding-users')
 @login_required
 def onboarding_users():
-    users = OnboardingRegistration.objects.order_by('-created_at')
+    users = get_onboarding_registrations_all()
     return render_template('admin/onboarding_users.html', users=users)
 
 
@@ -430,7 +433,10 @@ def logout():
 @admin_bp.route('/')
 @login_required
 def dashboard():
-    celebs = Celebrity.objects.order_by('-created_at')
+    if USE_MONGO:
+        celebs = Celebrity.objects.order_by('-created_at')
+    else:
+        celebs = Celebrity.query.order_by(Celebrity.created_at.desc()).all()
     form= DeleteCelebrityForm()
     return render_template('admin/dashboard.html', form=form, celebs=celebs)
 
@@ -458,7 +464,7 @@ def add_celeb():
 @admin_bp.route('/edit/<int:cid>', methods=['GET', 'POST'])
 @login_required
 def edit_celeb(cid):
-    celeb = Celebrity.objects(id=cid).first()
+    celeb = get_celebrity_by_id(cid)
     if not celeb:
         abort(404)
     form = CelebrityForm()
@@ -514,7 +520,7 @@ def edit_celeb(cid):
 def delete_celebrity(cid):
     form = DeleteCelebrityForm()
     if form.validate_on_submit():
-        celeb = Celebrity.objects(id=cid).first()
+        celeb = get_celebrity_by_id(cid)
         if not celeb:
             flash('Celebrity not found', 'danger')
             return redirect(url_for('admin.dashboard'))
@@ -522,7 +528,7 @@ def delete_celebrity(cid):
             os.remove(os.path.join(current_app.config['UPLOAD_FOLDER'], celeb.photo_filename))
         except Exception:
             pass
-        celeb.delete()
+        delete_object(celeb)
         flash(f'{celeb.name} has been deleted successfully', 'success')
     else:
         flash('Invalid delete request','danger')
