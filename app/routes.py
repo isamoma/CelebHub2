@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Blueprint, render_template, current_app, request, redirect, url_for, flash
 from .models import Celebrity, User,CelebritySubmission,OnboardingRegistration
 from . import DB, login_manager
@@ -12,6 +13,19 @@ ALLOWED_EXT = {'png','jpg','jpeg','gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXT
++
++
++def generate_unique_slug(name):
++    # Basic slugify
++    base = re.sub(r'[^a-z0-9]+', '-', (name or '').lower()).strip('-') or 'celeb'
++    candidate = base
++    idx = 1
++    # Query existing slugs that start with base
++    existing = {s.slug for s in Celebrity.query.filter(Celebrity.slug.like(f"{base}%")).all()}
++    while candidate in existing:
++        idx += 1
++        candidate = f"{base}-{idx}"
++    return candidate
 
 main_bp = Blueprint('main', __name__)
 admin_bp = Blueprint('admin', __name__)
@@ -279,12 +293,18 @@ def approve_submission(id):
     sub = CelebritySubmission.query.get_or_404(id)
 
     # Create a new Celebrity from submitted data
+    # Generate a unique, safe slug for the new celebrity
+    slug = generate_unique_slug(sub.name or f'celeb-{sub.id}')
+
     new_celeb = Celebrity(
         name=sub.name,
+        slug=slug,
         category=sub.category,
-        phone=sub.phone,
         bio=sub.bio,
-        image=sub.image
+        photo_filename=sub.photo_filename,
+        youtube=sub.youtube,
+        tiktok=sub.tiktok,
+        spotify=sub.spotify,
     )
 
     DB.session.add(new_celeb)
@@ -304,7 +324,7 @@ def reject_submission(id):
     sub.status = "rejected"
     DB.session.commit()
     flash("Submission rejected.", "danger")
-    return redirect(url_for('admin/view_submission'))
+    return redirect(url_for('admin.submissions'))
 @admin_bp.route('/onboarding-users')
 @login_required
 def onboarding_users():

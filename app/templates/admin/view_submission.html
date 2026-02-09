@@ -27,10 +27,12 @@
 
     <div class="mt-6 flex gap-4">
         <form action="{{ url_for('admin.approve_submission', id=sub.id) }}" method="POST" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="bg-green-600 text-white px-4 py-2 rounded-lg">Approve</button>
         </form>
 
         <form action="{{ url_for('admin.reject_submission', id=sub.id) }}" method="POST" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="bg-red-600 text-white px-4 py-2 rounded-lg">Reject</button>
         </form>
 
