@@ -1,7 +1,7 @@
 import os
 import re
 from flask import Blueprint, render_template, current_app, request, redirect, url_for, flash
-from .models import Celebrity, User, CelebritySubmission, OnboardingRegistration
+from .models import Celebrity, User, CelebritySubmission, OnboardingRegistration, USE_MONGO
 from . import DB, login_manager, ME
 from flask_login import login_user, login_required, logout_user, current_user
 from flask import abort
@@ -12,6 +12,80 @@ from app import mail
 
 ALLOWED_EXT = {'png','jpg','jpeg','gif'}
 
+# Database abstraction helpers for dual-mode support
+def save_object(obj):
+    """Save object to database (works for both MongoEngine and SQLAlchemy)"""
+    if USE_MONGO:
+        obj.save()
+    else:
+        DB.session.add(obj)
+        DB.session.commit()
+
+def delete_object(obj):
+    """Delete object from database (works for both MongoEngine and SQLAlchemy)"""
+    if USE_MONGO:
+        obj.delete()
+    else:
+        DB.session.delete(obj)
+        DB.session.commit()
+
+# Query helper methods
+def get_user_by_id(user_id):
+    """Get user by ID (works for both database modes)"""
+    if USE_MONGO:
+        return User.objects(pk=int(user_id)).first()
+    else:
+        return User.query.get(int(user_id))
+
+def get_user_by_username(username):
+    """Get user by username (works for both database modes)"""
+    if USE_MONGO:
+        return User.objects(username=username).first()
+    else:
+        return User.query.filter_by(username=username).first()
+
+def get_celebrity_by_id(celeb_id):
+    """Get celebrity by ID (works for both database modes)"""
+    if USE_MONGO:
+        return Celebrity.objects(id=celeb_id).first()
+    else:
+        return Celebrity.query.get(celeb_id)
+
+def get_celebrity_by_slug(slug):
+    """Get celebrity by slug (works for both database modes)"""
+    if USE_MONGO:
+        return Celebrity.objects(slug=slug).first()
+    else:
+        return Celebrity.query.filter_by(slug=slug).first()
+
+def get_celebrity_submissions_pending():
+    """Get all pending celebrity submissions (works for both database modes)"""
+    if USE_MONGO:
+        return CelebritySubmission.objects(status="pending").order_by('-created_at')
+    else:
+        return CelebritySubmission.query.filter_by(status="pending").order_by(CelebritySubmission.created_at.desc()).all()
+
+def get_submission_by_id(submission_id):
+    """Get submission by ID (works for both database modes)"""
+    if USE_MONGO:
+        return CelebritySubmission.objects(id=submission_id).first()
+    else:
+        return CelebritySubmission.query.get(submission_id)
+
+def get_featured_celebrities():
+    """Get all featured celebrities (works for both database modes)"""
+    if USE_MONGO:
+        return Celebrity.objects(featured=True)
+    else:
+        return Celebrity.query.filter_by(featured=True).all()
+
+def get_onboarding_registrations_all():
+    """Get all onboarding registrations (works for both database modes)"""
+    if USE_MONGO:
+        return OnboardingRegistration.objects.order_by('-created_at')
+    else:
+        return OnboardingRegistration.query.order_by(OnboardingRegistration.created_at.desc()).all()
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXT
 
@@ -21,8 +95,11 @@ def generate_unique_slug(name):
     base = re.sub(r'[^a-z0-9]+', '-', (name or '').lower()).strip('-') or 'celeb'
     candidate = base
     idx = 1
-    # Query existing slugs that start with base (MongoEngine)
-    existing = {s.slug for s in Celebrity.objects(slug__startswith=base).only('slug')}
+    # Query existing slugs that start with base
+    if USE_MONGO:
+        existing = {s.slug for s in Celebrity.objects(slug__startswith=base).only('slug')}
+    else:
+        existing = {s.slug for s in Celebrity.query.filter(Celebrity.slug.like(f'{base}%')).all()}
     while candidate in existing:
         idx += 1
         candidate = f"{base}-{idx}"
@@ -34,7 +111,7 @@ admin_bp = Blueprint('admin', __name__)
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        return User.objects(pk=int(user_id)).first()
+        return get_user_by_id(user_id)
     except Exception:
         return None
 
@@ -42,22 +119,27 @@ def load_user(user_id):
 def index():
     q = request.args.get('q', '').strip()
 
-    # Base query: only featured celebrities (MongoEngine)
-    celebs_qs = Celebrity.objects(featured=True)
+    # Base query: only featured celebrities
+    celebs_qs = get_featured_celebrities()
 
     # If a search query exists, filter by name (but still featured only)
     if q:
-        celebs_qs = celebs_qs.filter(name__icontains=q)
+        if USE_MONGO:
+            celebs_qs = [c for c in celebs_qs if q.lower() in c.name.lower()]
+        else:
+            celebs_qs = [c for c in celebs_qs if q.lower() in c.name.lower()]
 
     # Order featured ones by newest first
-    celebs = celebs_qs.order_by('-created_at')
+    if USE_MONGO:
+        celebs = sorted(celebs_qs, key=lambda x: x.created_at, reverse=True)
+    else:
+        celebs = sorted(celebs_qs, key=lambda x: x.created_at, reverse=True)
 
     return render_template('index.html', celebs=celebs, q=q)
 
-
 @main_bp.route('/celebrity/<slug>')
 def profile(slug):
-    celeb = Celebrity.objects(slug=slug).first()
+    celeb = get_celebrity_by_slug(slug)
     if not celeb:
         abort(404)
     return render_template('profile.html', celeb=celeb)
@@ -156,7 +238,7 @@ def onboarding():
             phone=form.phone.data,
             message=form.message.data
         )
-        record.save()
+        save_object(record)
 
         # Admin notification (Brevo)
         api_key = os.getenv("BREVO_API_KEY")
@@ -217,7 +299,7 @@ def submit_celeb():
             spotify=form.spotify.data,
             photo_filename=filename
         )
-        submission.save()
+        save_object(submission)
 
         # 📩 Send admin notification (Brevo)
         api_key = os.getenv("BREVO_API_KEY")
@@ -271,7 +353,7 @@ def create_admin():
     from .models import User
     u = User(username="admin")
     u.set_password("admin123")
-    u.save()
+    save_object(u)
     return "Admin created!"
 
 @admin_bp.route('/celebrities')
@@ -312,11 +394,11 @@ def approve_submission(id):
         tiktok=sub.tiktok,
         spotify=sub.spotify,
     )
-    new_celeb.save()
+    save_object(new_celeb)
 
     # Update submission status
     sub.status = "approved"
-    sub.save()
+    save_object(sub)
 
     flash("Submission approved and added to Celebrities!", "success")
     return redirect(url_for('admin.submissions'))
@@ -325,11 +407,11 @@ def approve_submission(id):
 @admin_bp.route('/submission/<int:id>/reject', methods=['POST'])
 @login_required
 def reject_submission(id):
-    sub = CelebritySubmission.objects(id=id).first()
+    sub = CelebritySubmission.objects(id=id).first() if USE_MONGO else CelebritySubmission.query.get(id)
     if not sub:
         abort(404)
     sub.status = "rejected"
-    sub.save()
+    save_object(sub)
     flash("Submission rejected.", "danger")
     return redirect(url_for('admin.submissions'))
 @admin_bp.route('/onboarding-users')
@@ -368,7 +450,7 @@ def add_celeb():
                 category=form.category.data, photo_filename=filename,
                 youtube=form.youtube.data, tiktok=form.tiktok.data, spotify=form.spotify.data,
                 featured=form.featured.data)
-        new.save()
+        save_object(new)
         flash('Celebrity added', 'success')
         return redirect(url_for('admin.dashboard'))
     return render_template('admin/edit_profile.html', form=form)
@@ -420,7 +502,7 @@ def edit_celeb(cid):
         # ✅ Correctly handle 'featured' checkbox
         celeb.featured = form.featured.data  
 
-        celeb.save()
+        save_object(celeb)
         flash('Celebrity updated successfully!', 'success')
         return redirect(url_for('admin.dashboard'))
 
