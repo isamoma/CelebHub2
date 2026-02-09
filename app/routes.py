@@ -1,9 +1,10 @@
 import os
 import re
 from flask import Blueprint, render_template, current_app, request, redirect, url_for, flash
-from .models import Celebrity, User,CelebritySubmission,OnboardingRegistration
-from . import DB, login_manager
+from .models import Celebrity, User, CelebritySubmission, OnboardingRegistration
+from . import DB, login_manager, ME
 from flask_login import login_user, login_required, logout_user, current_user
+from flask import abort
 from werkzeug.utils import secure_filename
 from .forms import LoginForm, CelebrityForm ,DeleteCelebrityForm,FeaturedForm,ContactForm,CelebritySubmissionForm,OnboardingForm
 from flask_mail import Message
@@ -20,8 +21,8 @@ def generate_unique_slug(name):
     base = re.sub(r'[^a-z0-9]+', '-', (name or '').lower()).strip('-') or 'celeb'
     candidate = base
     idx = 1
-    # Query existing slugs that start with base
-    existing = {s.slug for s in Celebrity.query.filter(Celebrity.slug.like(f"{base}%")).all()}
+    # Query existing slugs that start with base (MongoEngine)
+    existing = {s.slug for s in Celebrity.objects(slug__startswith=base).only('slug')}
     while candidate in existing:
         idx += 1
         candidate = f"{base}-{idx}"
@@ -32,28 +33,33 @@ admin_bp = Blueprint('admin', __name__)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    try:
+        return User.objects(pk=int(user_id)).first()
+    except Exception:
+        return None
 
 @main_bp.route('/')
 def index():
     q = request.args.get('q', '').strip()
 
-    # Base query: only featured celebrities
-    query = Celebrity.query.filter_by(featured=True)
+    # Base query: only featured celebrities (MongoEngine)
+    celebs_qs = Celebrity.objects(featured=True)
 
     # If a search query exists, filter by name (but still featured only)
     if q:
-        query = query.filter(Celebrity.name.ilike(f"%{q}%"))
+        celebs_qs = celebs_qs.filter(name__icontains=q)
 
     # Order featured ones by newest first
-    celebs = query.order_by(Celebrity.created_at.desc()).all()
+    celebs = celebs_qs.order_by('-created_at')
 
     return render_template('index.html', celebs=celebs, q=q)
 
 
 @main_bp.route('/celebrity/<slug>')
 def profile(slug):
-    celeb = Celebrity.query.filter_by(slug=slug).first_or_404()
+    celeb = Celebrity.objects(slug=slug).first()
+    if not celeb:
+        abort(404)
     return render_template('profile.html', celeb=celeb)
 
 @main_bp.route('/featured')
@@ -150,8 +156,7 @@ def onboarding():
             phone=form.phone.data,
             message=form.message.data
         )
-        DB.session.add(record)
-        DB.session.commit()
+        record.save()
 
         # Admin notification (Brevo)
         api_key = os.getenv("BREVO_API_KEY")
@@ -212,9 +217,7 @@ def submit_celeb():
             spotify=form.spotify.data,
             photo_filename=filename
         )
-
-        DB.session.add(submission)
-        DB.session.commit()
+        submission.save()
 
         # 📩 Send admin notification (Brevo)
         api_key = os.getenv("BREVO_API_KEY")
@@ -256,7 +259,7 @@ def login():
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        user = User.query.filter_by(username=username).first()
+        user = User.objects(username=username).first()
         if user and user.check_password(password):
             login_user(user)
             flash('Logged in successfully', 'success')
@@ -268,29 +271,32 @@ def create_admin():
     from .models import User
     u = User(username="admin")
     u.set_password("admin123")
-    DB.session.add(u)
-    DB.session.commit()
+    u.save()
     return "Admin created!"
 
 @admin_bp.route('/celebrities')
 @login_required
 def celebrities():
-    celebs = Celebrity.query.order_by(Celebrity.created_at.desc()).all()
+    celebs = Celebrity.objects.order_by('-created_at')
     return render_template('admin/celebrities.html', celebs=celebs ,form=FeaturedForm)
 @admin_bp.route('/submissions')
 @login_required
 def submissions():
-    pending_submissions = CelebritySubmission.query.filter_by(status="pending").order_by(CelebritySubmission.created_at.desc()).all()
+    pending_submissions = CelebritySubmission.objects(status="pending").order_by('-created_at')
     return render_template('admin/submissions.html', submissions=pending_submissions)
 @admin_bp.route('/submissions/<int:id>')
 @login_required
 def view_submission(id):
-    sub = CelebritySubmission.query.get_or_404(id)
+    sub = CelebritySubmission.objects(id=id).first()
+    if not sub:
+        abort(404)
     return render_template('admin/view_submission.html', sub=sub)
 @admin_bp.route('/submission/<int:id>/approve', methods=['POST'])
 @login_required
 def approve_submission(id):
-    sub = CelebritySubmission.query.get_or_404(id)
+    sub = CelebritySubmission.objects(id=id).first()
+    if not sub:
+        abort(404)
 
     # Create a new Celebrity from submitted data
     # Generate a unique, safe slug for the new celebrity
@@ -306,12 +312,11 @@ def approve_submission(id):
         tiktok=sub.tiktok,
         spotify=sub.spotify,
     )
-
-    DB.session.add(new_celeb)
+    new_celeb.save()
 
     # Update submission status
     sub.status = "approved"
-    DB.session.commit()
+    sub.save()
 
     flash("Submission approved and added to Celebrities!", "success")
     return redirect(url_for('admin.submissions'))
@@ -320,15 +325,17 @@ def approve_submission(id):
 @admin_bp.route('/submission/<int:id>/reject', methods=['POST'])
 @login_required
 def reject_submission(id):
-    sub = CelebritySubmission.query.get_or_404(id)
+    sub = CelebritySubmission.objects(id=id).first()
+    if not sub:
+        abort(404)
     sub.status = "rejected"
-    DB.session.commit()
+    sub.save()
     flash("Submission rejected.", "danger")
     return redirect(url_for('admin.submissions'))
 @admin_bp.route('/onboarding-users')
 @login_required
 def onboarding_users():
-    users = OnboardingRegistration.query.order_by(OnboardingRegistration.created_at.desc()).all()
+    users = OnboardingRegistration.objects.order_by('-created_at')
     return render_template('admin/onboarding_users.html', users=users)
 
 
@@ -341,7 +348,7 @@ def logout():
 @admin_bp.route('/')
 @login_required
 def dashboard():
-    celebs = Celebrity.query.order_by(Celebrity.created_at.desc()).all()
+    celebs = Celebrity.objects.order_by('-created_at')
     form= DeleteCelebrityForm()
     return render_template('admin/dashboard.html', form=form, celebs=celebs)
 
@@ -358,11 +365,10 @@ def add_celeb():
             save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             photo_file.save(save_path)
         new = Celebrity(name=form.name.data, slug=form.slug.data, bio=form.bio.data,
-                        category=form.category.data, photo_filename=filename,
-                        youtube=form.youtube.data, tiktok=form.tiktok.data, spotify=form.spotify.data,
-                        featured=form.featured.data)
-        DB.session.add(new)
-        DB.session.commit()
+                category=form.category.data, photo_filename=filename,
+                youtube=form.youtube.data, tiktok=form.tiktok.data, spotify=form.spotify.data,
+                featured=form.featured.data)
+        new.save()
         flash('Celebrity added', 'success')
         return redirect(url_for('admin.dashboard'))
     return render_template('admin/edit_profile.html', form=form)
@@ -370,8 +376,20 @@ def add_celeb():
 @admin_bp.route('/edit/<int:cid>', methods=['GET', 'POST'])
 @login_required
 def edit_celeb(cid):
-    celeb = Celebrity.query.get_or_404(cid)
-    form = CelebrityForm(obj=celeb)
+    celeb = Celebrity.objects(id=cid).first()
+    if not celeb:
+        abort(404)
+    form = CelebrityForm()
+    # Populate form data for editing
+    if request.method == 'GET':
+        form.name.data = celeb.name
+        form.slug.data = celeb.slug
+        form.category.data = celeb.category
+        form.bio.data = celeb.bio
+        form.youtube.data = celeb.youtube
+        form.tiktok.data = celeb.tiktok
+        form.spotify.data = celeb.spotify
+        form.featured.data = celeb.featured
 
     if form.validate_on_submit():
         # Handle photo upload
@@ -402,7 +420,7 @@ def edit_celeb(cid):
         # ✅ Correctly handle 'featured' checkbox
         celeb.featured = form.featured.data  
 
-        DB.session.commit()
+        celeb.save()
         flash('Celebrity updated successfully!', 'success')
         return redirect(url_for('admin.dashboard'))
 
@@ -414,13 +432,15 @@ def edit_celeb(cid):
 def delete_celebrity(cid):
     form = DeleteCelebrityForm()
     if form.validate_on_submit():
-        celeb = Celebrity.query.get_or_404(cid)
+        celeb = Celebrity.objects(id=cid).first()
+        if not celeb:
+            flash('Celebrity not found', 'danger')
+            return redirect(url_for('admin.dashboard'))
         try:
             os.remove(os.path.join(current_app.config['UPLOAD_FOLDER'], celeb.photo_filename))
         except Exception:
             pass
-        DB.session.delete(celeb)
-        DB.session.commit()
+        celeb.delete()
         flash(f'{celeb.name} has been deleted successfully', 'success')
     else:
         flash('Invalid delete request','danger')

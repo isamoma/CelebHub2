@@ -1,6 +1,7 @@
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+import mongoengine as me
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
@@ -16,6 +17,8 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', 'instance'
 # Initialize extensions
 DB = SQLAlchemy()
 migrate = Migrate()
+# MongoEngine will be used when MONGO_URI is provided
+ME = None
 login_manager = LoginManager()
 login_manager.login_view = 'admin.login'
 csrf = CSRFProtect()
@@ -42,8 +45,17 @@ def create_app():
     
 
     # Initialize extensions
-    DB.init_app(app)
-    migrate.init_app(app, DB)
+    # If a MONGO_URI env var is present, connect MongoEngine and prefer MongoDB
+    mongo_uri = os.getenv('MONGO_URI')
+    if mongo_uri:
+        # Use MongoEngine for production (Render)
+        me.connect(host=mongo_uri)
+        global ME
+        ME = me
+    else:
+        DB.init_app(app)
+        migrate.init_app(app, DB)
+
     login_manager.init_app(app)
     csrf.init_app(app)
     mail.init_app(app)
@@ -57,8 +69,9 @@ def create_app():
     # Ensure upload folder exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-    # Create database tables
-    with app.app_context():
-        DB.create_all()
+    # Create database tables for local SQLite only
+    if not mongo_uri:
+        with app.app_context():
+            DB.create_all()
 
     return app
