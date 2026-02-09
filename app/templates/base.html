@@ -60,24 +60,40 @@
     &copy; {{ 2025 }} Kenyan Celebrity Hub — Built by Isaiah 💫
   </footer>
 <script>
+  // Initialize dark mode theme after page loads
   document.addEventListener("DOMContentLoaded", function() {
     const toggle = document.getElementById("themeToggle");
     const html = document.documentElement;
 
-    // Load saved theme preference on page load
-    if (localStorage.theme === "dark" || 
-        (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-      html.classList.add("dark");
-      localStorage.theme = "dark";
-    } else {
-      html.classList.remove("dark");
-      localStorage.theme = "light";
+    // Function to load theme from localStorage or system preference
+    function loadTheme() {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        html.classList.add("dark");
+      } else if (savedTheme === "light") {
+        html.classList.remove("dark");
+      } else {
+        // Check system preference
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          html.classList.add("dark");
+          localStorage.setItem("theme", "dark");
+        } else {
+          html.classList.remove("dark");
+          localStorage.setItem("theme", "light");
+        }
+      }
     }
 
+    // Load theme on page load
+    loadTheme();
+
     // Toggle dark mode on button click
-    toggle.addEventListener("click", () => {
-      html.classList.toggle("dark");
-      localStorage.theme = html.classList.contains("dark") ? "dark" : "light";
-    });
+    if (toggle) {
+      toggle.addEventListener("click", function(e) {
+        e.preventDefault();
+        const isDark = html.classList.toggle("dark");
+        localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
+      });
+    }
   });
 </script>
