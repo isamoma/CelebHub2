@@ -1,79 +1,115 @@
 """Migration script: copy data from local SQLite (legacy_models) into MongoDB documents.
 
-NOTICE: If you encounter "createIndexes not found" errors, your MongoDB service (e.g., Atlas)
-may not support index creation. In that case, you can skip this migration and:
-- Run the app locally with SQLite (default if MONGO_URI is not set)
-- On Render, set MONGO_URI to enable MongoDB; the app will use .objects() queries automatically
-- User passwords and data structure are preserved across both databases
+NOTICE: Make sure you have set your MONGO_URI environment variable pointing to MongoDB Atlas,
+and your local data.db SQLite file exists with data.
 
 Usage:
   python scripts/migrate_sqlite_to_mongo.py
 
-This script expects that your environment variable `MONGO_URI` is set and reachable.
-It will read the existing SQLite DB via SQLAlchemy legacy models and insert documents
-into MongoEngine collections defined in `app.models`.
+This script will:
+1. Read from SQLite (data.db) via SQLAlchemy legacy models
+2. Write to MongoDB (MONGO_URI) via MongoEngine models
+3. Preserve user passwords and all data
 """
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from dotenv import load_dotenv
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', 'instance', '.env'))
+print("=" * 70)
+print("MongoDB Migration Script - SQLite to MongoDB Atlas")
+print("=" * 70)
+print()
 
-print("=" * 70)
-print("MongoDB Migration Script")
-print("=" * 70)
-print()
-print("NOTICE: If you see 'createIndexes not found' error, your MongoDB Atlas")
-print("may not support auto-index creation. If so, you can skip this migration.")
-print("The app will work fine with SQLite locally and MongoDB on Render.")
-print()
-print("Data and passwords are preserved in both databases.")
-print("=" * 70)
+# Check if MONGO_URI is set - try from environment first, then from instance/.env
+mongo_uri = os.getenv('MONGO_URI')
+if not mongo_uri:
+    # Try loading directly from the file
+    env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'instance', '.env'))
+    print(f"Looking for MONGO_URI in: {env_path}")
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # Debug: print all lines that mention MONGO
+            for line in content.split('\n'):
+                if 'MONGO' in line:
+                    print(f"  Found line with MONGO: {line[:80]}")
+            
+            # Now extract MONGO_URI properly
+            for line in content.split('\n'):
+                stripped = line.strip()
+                if stripped.startswith('MONGO_URI='):
+                    mongo_uri = stripped.split('=', 1)[1].strip()
+                    if mongo_uri.startswith('"') and mongo_uri.endswith('"'):
+                        mongo_uri = mongo_uri[1:-1]
+                    print(f"✓ Found MONGO_URI in file")
+                    break
+    except FileNotFoundError:
+        print(f"  File not found: {env_path}")
+    except Exception as e:
+        print(f"  Warning: Could not read file: {e}")
+
+if not mongo_uri:
+    print("❌ ERROR: MONGO_URI environment variable is not set!")
+    print("Please set MONGO_URI in instance/.env")
+    sys.exit(1)
+
+print(f"✓ Using MONGO_URI: {mongo_uri[:60]}...")
 print()
 
 from app import create_app
+from urllib.parse import quote_plus
+import re
+import mongoengine as me
+
+def encode_mongo_uri(mongo_uri):
+    """Encode MongoDB URI credentials according to RFC 3986"""
+    if not mongo_uri:
+        return mongo_uri
+    
+    match = re.match(r'(mongodb\+srv://|mongodb://)([^:]+):([^@]+)@(.+)', mongo_uri)
+    
+    if match:
+        protocol = match.group(1)
+        username = match.group(2)
+        password = match.group(3)
+        rest = match.group(4)
+        
+        encoded_username = quote_plus(username)
+        encoded_password = quote_plus(password)
+        
+        encoded_uri = f"{protocol}{encoded_username}:{encoded_password}@{rest}"
+        return encoded_uri
+    
+    return mongo_uri
+
+# Encode the URI to handle special characters
+encoded_mongo_uri = mongo_uri  # Use as-is since it's already encoded in the .env file
+
+# Set the MONGO_URI in environment so create_app() will use it
+os.environ['MONGO_URI'] = mongo_uri
+
 app = create_app()
 
+# Explicitly reconnect to MongoDB with the URI to ensure connection
+try:
+    me.disconnect('default')  # Disconnect from any previous connection
+    me.connect(host=encoded_mongo_uri)
+    print("✓ Connected to MongoDB Atlas for migration")
+except Exception as e:
+    print(f"❌ Failed to connect to MongoDB: {e}")
+    sys.exit(1)
+
+print()
+
 with app.app_context():
-    # Manually init SQLAlchemy for the legacy models to work
-    from app import DB
-    DB.init_app(app)
-
-    # Ensure mongoengine connection (create_app should do this when MONGO_URI is present,
-    # but connect explicitly here to guarantee the default connection exists)
-    import mongoengine as me
-    mongo_uri = os.getenv('MONGO_URI')
-    # If dotenv didn't set the var, try reading the instance/.env directly
-    if not mongo_uri:
-        env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'instance', '.env'))
-        try:
-            with open(env_path, 'r', encoding='utf-8') as f:
-                for ln in f:
-                    if 'MONGO_URI' in ln:
-                        parts = ln.split('=',1)
-                        if len(parts) == 2:
-                            mongo_uri = parts[1].strip()
-                            # strip possible surrounding quotes
-                            if mongo_uri.startswith('"') and mongo_uri.endswith('"'):
-                                mongo_uri = mongo_uri[1:-1]
-                            break
-        except Exception:
-            pass
-
-    if mongo_uri:
-        try:
-            me.connect(host=mongo_uri)
-            print('mongoengine connected using MONGO_URI from env/file')
-        except Exception as e:
-            print('Warning: mongoengine.connect failed:', e)
-    else:
-        print('No MONGO_URI found; running migration without MongoDB connection will fail if attempted')
-
     # Import legacy SQLAlchemy models and MongoEngine models
     from app.legacy_models import LegacyCelebrity, LegacyUser, LegacyCelebritySubmission, LegacyOnboardingRegistration
     from app.models import Celebrity, User, CelebritySubmission, OnboardingRegistration
-
+    from app import DB
+    
+    # Initialize SQLAlchemy if not already initialized
+    if 'sqlalchemy' not in app.extensions:
+        DB.init_app(app)
 
     print('Starting migration from SQLite to MongoDB...')
     print()
