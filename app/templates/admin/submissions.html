@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1 class="text-3xl font-bold text-indigo-600 mb-6">Pending Celebrity Submissions</h1>
+<h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-6">Pending Celebrity Submissions</h1>
 
-<table class="w-full bg-white shadow rounded-xl overflow-hidden">
-    <thead class="bg-gray-100">
-        <tr>
+<table class="w-full bg-white dark:bg-gray-800 shadow rounded-xl overflow-hidden">
+    <thead class="bg-gray-100 dark:bg-gray-700">
+        <tr class="dark:text-gray-200">
             <th class="p-3 text-left">Name</th>
             <th class="p-3 text-left">Category</th>
             <th class="p-3 text-left">Phone</th>
@@ -14,16 +14,16 @@
         </tr>
     </thead>
 
-    <tbody>
+    <tbody class="dark:text-gray-300">
         {% for s in submissions %}
-        <tr class="border-b">
+        <tr class="border-b dark:border-gray-700">
             <td class="p-3">{{ s.name }}</td>
             <td class="p-3">{{ s.category }}</td>
             <td class="p-3">{{ s.phone }}</td>
             <td class="p-3">{{ s.created_at.strftime("%Y-%m-%d") }}</td>
             <td class="p-3">
                 <a href="{{ url_for('admin.view_submission', id=s.id) }}" 
-                   class="text-indigo-500 hover:underline">View</a>
+                   class="text-indigo-500 dark:text-indigo-400 hover:underline">View</a>
             </td>
         </tr>
         {% endfor %}

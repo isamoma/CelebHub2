@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1 class="text-3xl font-bold text-indigo-600 mb-6">Onboarding Users</h1>
+<h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-6">Onboarding Users</h1>
 
-<table class="w-full bg-white shadow rounded-xl overflow-hidden">
-    <thead class="bg-gray-100">
-        <tr>
+<table class="w-full bg-white dark:bg-gray-800 shadow rounded-xl overflow-hidden">
+    <thead class="bg-gray-100 dark:bg-gray-700">
+        <tr class="dark:text-gray-200">
             <th class="p-3 text-left">Name</th>
             <th class="p-3 text-left">Email</th>
             <th class="p-3 text-left">Phone</th>
@@ -14,9 +14,9 @@
         </tr>
     </thead>
 
-    <tbody>
+    <tbody class="dark:text-gray-300">
         {% for u in users %}
-        <tr class="border-b">
+        <tr class="border-b dark:border-gray-700">
             <td class="p-3">{{ u.name }}</td>
             <td class="p-3">{{ u.email }}</td>
             <td class="p-3">{{ u.phone }}</td>
@@ -25,16 +25,16 @@
             <td class="p-3">
               {% if users.status == "pending" %}
                   <form action="{{ url_for('admin.approve_onboarding', id=c.id) }}" method="POST" style="display:inline;">
-                      <button class="bg-green-600 px-3 py-1 rounded text-white">Approve</button>
+                      <button class="bg-green-600 dark:bg-green-700 px-3 py-1 rounded text-white hover:bg-green-700 dark:hover:bg-green-600">Approve</button>
                   </form>
 
                   <form action="{{ url_for('admin.reject_onboarding', id=c.id) }}" method="POST" style="display:inline;">
-                      <button class="bg-red-600 px-3 py-1 rounded text-white">Reject</button>
+                      <button class="bg-red-600 dark:bg-red-700 px-3 py-1 rounded text-white hover:bg-red-700 dark:hover:bg-red-600">Reject</button>
                   </form>
               {% elif users.status == "approved" %}
-                  <span class="text-green-600 font-bold">Approved</span>
+                  <span class="text-green-600 dark:text-green-400 font-bold">Approved</span>
               {% else %}
-                  <span class="text-red-600 font-bold">Rejected</span>
+                  <span class="text-red-600 dark:text-red-400 font-bold">Rejected</span>
               {% endif %}
           </td>
 
