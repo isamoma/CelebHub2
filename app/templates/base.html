@@ -6,37 +6,33 @@
   <title>{{ title if title else 'Kenyan Celebrity Hub' }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
-  <nav class="bg-white shadow-md">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col">
+  <nav class="bg-white dark:bg-gray-800 shadow-md">
     <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="{{ url_for('main.index') }}" class="text-2xl font-bold text-indigo-600">CelebHub</a>
+      <a href="{{ url_for('main.index') }}" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">CelebHub</a>
       <div class="flex items-center gap-4">
         <form method="get" action="{{ url_for('main.index') }}" class="hidden sm:block">
-          <input name="q" placeholder="Search celeb..." value="{{ q or '' }}" class="border rounded-lg px-3 py-1">
+          <input name="q" placeholder="Search celeb..." value="{{ q or '' }}" class="border rounded-lg px-3 py-1 dark:bg-gray-700 dark:text-white dark:border-gray-600">
           <button class="p-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
           type="submit">Search</button>
         </form>
         <div class="relative group">
-          <button class="text-sm px-4 py-2 rounded hover:bg-gray-100">Menu ▾</button>
-          <div class="absolute right-0 hidden group-hover:block bg-white rounded-lg shadow-lg mt-2 w-44">
-            <a href="{{ url_for('main.index') }}" class="block px-4 py-2 hover:bg-gray-500">Home</a>
-            <a href="{{ url_for('admin.login') }}" class="block px-4 py-2 hover:bg-gray-500">Admin</a>
-            <a href="{{ url_for('main.featured') }}" class="block px-4 py-2 hover:bg-gray-500">Feature your Profile</a>
-            <a href="{{ url_for('main.about') }}"class="block px-4 py-2 hover:bg-green-500">About CelebHub</a>
-            <a href="{{ url_for('main.contact') }}" class="block px-4 py-2 hover:bg-blue-500">Contact Us</a>
-            <a href="{{ url_for('main.faqs') }}" class="block px-4 py-2 hover:text-indigo-500">FAQs</a>
-            <a href="{{ url_for('main.onboarding') }}" class=" block px-4 py-2 hover:text-indigo-500">Onboarding</a>
-           <a href="{{ url_for('main.submit_celeb') }}" class="block px-4 py-2 hover:text-indigo-500">Submit Profile</a>
-           <li><a href="{{ url_for('main.privacy') }}">Privacy Policy</a></li>
-            <li><a href="{{ url_for('main.terms') }}">Terms & Conditions</a></li>
-
-
-
-
+          <button class="text-sm px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Menu ▾</button>
+          <div class="absolute right-0 hidden group-hover:block bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-2 w-44">
+            <a href="{{ url_for('main.index') }}" class="block px-4 py-2 hover:bg-gray-500 dark:hover:bg-gray-700">Home</a>
+            <a href="{{ url_for('admin.login') }}" class="block px-4 py-2 hover:bg-gray-500 dark:hover:bg-gray-700">Admin</a>
+            <a href="{{ url_for('main.featured') }}" class="block px-4 py-2 hover:bg-gray-500 dark:hover:bg-gray-700">Feature your Profile</a>
+            <a href="{{ url_for('main.about') }}" class="block px-4 py-2 hover:bg-green-500 dark:hover:bg-gray-700">About CelebHub</a>
+            <a href="{{ url_for('main.contact') }}" class="block px-4 py-2 hover:bg-blue-500 dark:hover:bg-gray-700">Contact Us</a>
+            <a href="{{ url_for('main.faqs') }}" class="block px-4 py-2 hover:text-indigo-500 dark:hover:bg-gray-700">FAQs</a>
+            <a href="{{ url_for('main.onboarding') }}" class="block px-4 py-2 hover:text-indigo-500 dark:hover:bg-gray-700">Onboarding</a>
+            <a href="{{ url_for('main.submit_celeb') }}" class="block px-4 py-2 hover:text-indigo-500 dark:hover:bg-gray-700">Submit Profile</a>
+            <a href="{{ url_for('main.privacy') }}" class="block px-4 py-2 hover:text-indigo-500 dark:hover:bg-gray-700">Privacy Policy</a>
+            <a href="{{ url_for('main.terms') }}" class="block px-4 py-2 hover:text-indigo-500 dark:hover:bg-gray-700">Terms & Conditions</a>
           </div>
         </div>
-        <button id="themeToggle" class="p-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
-                🌓Dark Mode
+        <button id="themeToggle" class="p-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-semibold">
+          🌓 Dark Mode
         </button>
       </div>
     </div>
@@ -55,29 +51,28 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="bg-white mt-8 py-4 shadow-inner text-center text-gray-500 text-sm">
+  <footer class="bg-white dark:bg-gray-800 mt-8 py-4 shadow-inner text-center text-gray-500 dark:text-gray-400 text-sm">
     &copy; {{ 2025 }} Kenyan Celebrity Hub — Built by Isaiah 💫
   </footer>
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    const toggle = document.getElementById("modeToggle");
-    toggle.addEventListener("click", function() {
-        document.body.classList.toggle("dark-mode");
-    });
+    const toggle = document.getElementById("themeToggle");
+    const html = document.documentElement;
 
-  // Load saved theme preference
-  if (localStorage.theme === "dark" || 
-      (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-    html.classList.add("dark");
-  } else {
-    html.classList.remove("dark");
-  }
+    // Load saved theme preference on page load
+    if (localStorage.theme === "dark" || 
+        (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      html.classList.add("dark");
+      localStorage.theme = "dark";
+    } else {
+      html.classList.remove("dark");
+      localStorage.theme = "light";
+    }
 
-  toggle.addEventListener("click", () => {
-    html.classList.toggle("dark");
-    localStorage.theme = html.classList.contains("dark") ? "dark" : "light";
+    // Toggle dark mode on button click
+    toggle.addEventListener("click", () => {
+      html.classList.toggle("dark");
+      localStorage.theme = html.classList.contains("dark") ? "dark" : "light";
+    });
   });
-});
-  </script>
-</body>
-</html>
+</script>
