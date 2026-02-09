@@ -7,7 +7,8 @@ from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
 from flask_mail import Mail, Message
 from app.mpesa import mpesa_bp
-
+from urllib.parse import quote_plus
+import re
 
 from dotenv import load_dotenv
 
@@ -23,6 +24,35 @@ login_manager = LoginManager()
 login_manager.login_view = 'admin.login'
 csrf = CSRFProtect()
 mail = Mail()  # new
+
+def encode_mongo_uri(mongo_uri):
+    """
+    Encode MongoDB URI username and password according to RFC 3986.
+    Handles URIs like: mongodb+srv://user@domain.com:pass@word@cluster.mongodb.net/db
+    """
+    if not mongo_uri:
+        return mongo_uri
+    
+    # Pattern: mongodb+srv://username:password@host/database
+    # We need to extract username and password, encode them, and rebuild the URI
+    match = re.match(r'(mongodb\+srv://|mongodb://)([^:]+):([^@]+)@(.+)', mongo_uri)
+    
+    if match:
+        protocol = match.group(1)
+        username = match.group(2)
+        password = match.group(3)
+        rest = match.group(4)
+        
+        # Encode username and password
+        encoded_username = quote_plus(username)
+        encoded_password = quote_plus(password)
+        
+        # Reconstruct URI
+        encoded_uri = f"{protocol}{encoded_username}:{encoded_password}@{rest}"
+        return encoded_uri
+    
+    # If pattern doesn't match, return original (already encoded or non-standard)
+    return mongo_uri
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
@@ -48,8 +78,10 @@ def create_app():
     # If a MONGO_URI env var is present, connect MongoEngine and prefer MongoDB
     mongo_uri = os.getenv('MONGO_URI')
     if mongo_uri:
+        # Automatically encode special characters in username and password
+        encoded_uri = encode_mongo_uri(mongo_uri)
         # Use MongoEngine for production (Render)
-        me.connect(host=mongo_uri)
+        me.connect(host=encoded_uri)
     else:
         # Local development: Try to connect to local MongoDB, fall back to in-memory mock if unavailable
         try:
