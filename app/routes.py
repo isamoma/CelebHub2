@@ -438,16 +438,6 @@ def login():
             return redirect(url_for('admin.dashboard'))
         flash('Invalid credentials', 'danger')
     return render_template('admin/login.html', form=form)
-@admin_bp.route('/create_admin')
-def create_admin():
-    from .models import User
-    # Create an admin account. Username comes from ADMIN_USERNAMES env (first entry)
-    admin_env = os.getenv('ADMIN_USERNAMES', 'admin')
-    admin_username = [u.strip() for u in admin_env.split(',') if u.strip()][0]
-    u = User(username=admin_username, email=f"{admin_username}@example.com", is_admin=True)
-    u.set_password(os.getenv('ADMIN_PASSWORD', 'admin123'))
-    save_object(u)
-    return f"Admin '{admin_username}' created!"
 
 @admin_bp.route('/celebrities')
 @login_required
