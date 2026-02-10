@@ -10,8 +10,25 @@ from .forms import LoginForm, SignupForm, CelebrityForm ,DeleteCelebrityForm,Fea
 from flask_mail import Message
 from app import mail
 from .utils import extract_youtube_id, extract_tiktok_id, extract_spotify_id
+from functools import wraps
 
 ALLOWED_EXT = {'png','jpg','jpeg','gif'}
+
+# Admin-required decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Please log in first', 'danger')
+            return redirect(url_for('admin.login'))
+        # Check if user is admin or in ADMIN_USERNAMES
+        allowed_admins = [u.strip() for u in os.getenv('ADMIN_USERNAMES', 'admin').split(',') if u.strip()]
+        is_admin = getattr(current_user, 'is_admin', False) or current_user.username in allowed_admins
+        if not is_admin:
+            flash('You are not authorized to access the admin panel', 'danger')
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Database abstraction helpers for dual-mode support
 def save_object(obj):
@@ -433,14 +450,21 @@ def login():
         password = form.password.data
         user = get_user_by_username(username)
         if user and user.check_password(password):
-            login_user(user)
-            flash('Logged in successfully', 'success')
-            return redirect(url_for('admin.dashboard'))
-        flash('Invalid credentials', 'danger')
+            # Check if user is admin or in ADMIN_USERNAMES before login
+            allowed_admins = [u.strip() for u in os.getenv('ADMIN_USERNAMES', 'admin').split(',') if u.strip()]
+            is_admin = getattr(user, 'is_admin', False) or user.username in allowed_admins
+            if is_admin:
+                login_user(user)
+                flash('Logged in successfully', 'success')
+                return redirect(url_for('admin.dashboard'))
+            else:
+                flash('You are not authorized to access the admin panel', 'danger')
+        else:
+            flash('Invalid credentials', 'danger')
     return render_template('admin/login.html', form=form)
 
 @admin_bp.route('/celebrities')
-@login_required
+@admin_required
 def celebrities():
     if USE_MONGO:
         celebs = Celebrity.objects.order_by('-created_at')
@@ -448,19 +472,19 @@ def celebrities():
         celebs = Celebrity.query.order_by(Celebrity.created_at.desc()).all()
     return render_template('admin/celebrities.html', celebs=celebs ,form=FeaturedForm)
 @admin_bp.route('/submissions')
-@login_required
+@admin_required
 def submissions():
     pending_submissions = get_celebrity_submissions_pending()
     return render_template('admin/submissions.html', submissions=pending_submissions)
 @admin_bp.route('/submissions/<int:id>')
-@login_required
+@admin_required
 def view_submission(id):
     sub = get_submission_by_id(id)
     if not sub:
         abort(404)
     return render_template('admin/view_submission.html', sub=sub)
 @admin_bp.route('/submission/<int:id>/approve', methods=['POST'])
-@login_required
+@admin_required
 def approve_submission(id):
     sub = get_submission_by_id(id)
     if not sub:
@@ -491,7 +515,7 @@ def approve_submission(id):
 
     
 @admin_bp.route('/submission/<int:id>/reject', methods=['POST'])
-@login_required
+@admin_required
 def reject_submission(id):
     sub = get_submission_by_id(id)
     if not sub:
@@ -501,20 +525,20 @@ def reject_submission(id):
     flash("Submission rejected.", "danger")
     return redirect(url_for('admin.submissions'))
 @admin_bp.route('/onboarding-users')
-@login_required
+@admin_required
 def onboarding_users():
     users = get_onboarding_registrations_all()
     return render_template('admin/onboarding_users.html', users=users)
 
 
 @admin_bp.route('/logout')
-@login_required
+@admin_required
 def logout():
     logout_user()
     return redirect(url_for('main.index'))
 
 @admin_bp.route('/')
-@login_required
+@admin_required
 def dashboard():
     if USE_MONGO:
         celebs = Celebrity.objects.order_by('-created_at')
@@ -524,7 +548,7 @@ def dashboard():
     return render_template('admin/dashboard.html', form=form, celebs=celebs)
 
 @admin_bp.route('/add', methods=['GET','POST'])
-@login_required
+@admin_required
 def add_celeb():
     form = CelebrityForm()
     if form.validate_on_submit():
@@ -550,7 +574,7 @@ def add_celeb():
     return render_template('admin/edit_profile.html', form=form)
 
 @admin_bp.route('/edit/<int:cid>', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def edit_celeb(cid):
     celeb = get_celebrity_by_id(cid)
     if not celeb:
@@ -604,7 +628,7 @@ def edit_celeb(cid):
 
 
 @admin_bp.route('/delete/<int:cid>', methods=['POST'])
-@login_required
+@admin_required
 def delete_celebrity(cid):
     form = DeleteCelebrityForm()
     if form.validate_on_submit():
