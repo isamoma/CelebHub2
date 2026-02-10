@@ -84,12 +84,12 @@ def create_app():
     else:
         # Local development: Try to connect to local MongoDB, fall back to in-memory mock if unavailable
         try:
-            me.connect('mongodb://localhost:27017/celebhub_local')
+            me.connect(db='celebhub_local', host='mongodb://localhost:27017')
         except Exception as e:
             # If local MongoDB not available, use in-memory mock (mongoengine will work but won't persist)
             print(f"⚠️  Local MongoDB not available: {e}")
             print("📝 Using in-memory MongoEngine (data will not persist)")
-            me.connect('mongoenginetest')
+            me.connect(db='mongoenginetest')
         
         # Also initialize SQLAlchemy as fallback
         DB.init_app(app)
