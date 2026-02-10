@@ -219,10 +219,9 @@ def user_login():
 @main_bp.route('/user/logout')
 @login_required
 def user_logout():
-    """User logout"""
+    """User logout with options page"""
     logout_user()
-    flash('Logged out successfully', 'success')
-    return redirect(url_for('main.index'))
+    return render_template('user/logged_out.html')
 
 # Backward compatibility - old routes
 @main_bp.route('/login', methods=['GET', 'POST'])
