@@ -6,7 +6,6 @@ from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from flask_migrate import Migrate
 from flask_mail import Mail, Message
-from app.mpesa import mpesa_bp
 from urllib.parse import quote_plus
 import re
 
@@ -106,7 +105,6 @@ def create_app():
     # Register Blueprints
     from .routes import main_bp, admin_bp
     app.register_blueprint(main_bp)
-    app.register_blueprint(mpesa_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
 
     # Ensure upload folder exists

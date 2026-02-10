@@ -616,6 +616,61 @@ def mpesa_payment():
     return jsonify(result)
 
 
+@main_bp.route('/mpesa/callback', methods=['POST'])
+def mpesa_callback():
+    """
+    Handle M-Pesa payment callbacks and update celebrity featured status.
+    M-Pesa POSTs payment confirmation here after user completes STK push.
+    """
+    data = request.json
+    
+    # Extract callback body structure from M-Pesa response
+    body = data.get('Body', {})
+    stk_callback = body.get('stkCallback', {})
+    result_code = stk_callback.get('ResultCode', -1)
+    result_desc = stk_callback.get('ResultDesc', 'Unknown')
+    callback_metadata = stk_callback.get('CallbackMetadata', {})
+    
+    # Extract our payment reference from the callback metadata
+    payment_ref = None
+    metadata_items = callback_metadata.get('Item', [])
+    for item in metadata_items:
+        if item.get('Name') == 'AccountReference':
+            payment_ref = item.get('Value')
+            break
+    
+    print(f"M-Pesa Callback: ResultCode={result_code}, Ref={payment_ref}")
+    
+    # Only process successful payments (ResultCode 0)
+    if result_code == 0 and payment_ref:
+        try:
+            # Find the celebrity by payment_ref and mark as featured
+            if USE_MONGO:
+                celeb = Celebrity.objects(feature_payment_id=payment_ref).first()
+            else:
+                celeb = Celebrity.query.filter_by(feature_payment_id=payment_ref).first()
+            
+            if celeb:
+                # Mark as featured (30 days by default)
+                celeb.mark_featured(days=30, payment_id=payment_ref, amount=celeb.feature_amount or 500)
+                if not USE_MONGO:
+                    DB.session.commit()
+                
+                print(f"✓ Celebrity '{celeb.name}' marked as featured")
+            else:
+                print(f"⚠️  No celebrity found for payment_ref={payment_ref}")
+        except Exception as e:
+            print(f"❌ Error processing payment callback: {e}")
+    else:
+        print(f"⚠️  Payment failed or pending: {result_desc}")
+    
+    # Always return success to M-Pesa so callback isn't retried
+    return jsonify({
+        "ResultCode": 0,
+        "ResultDesc": "Callback received successfully"
+    })
+
+
 @main_bp.route('/mpesa/token')
 def generate_token():
     import requests, os
