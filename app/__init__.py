@@ -63,6 +63,11 @@ def create_app():
     app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
     app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024  # 4MB
 
+    # Session cookie settings to help CSRF token delivery in browsers (safe defaults)
+    app.config.setdefault('SESSION_COOKIE_SAMESITE', 'Lax')
+    app.config.setdefault('SESSION_COOKIE_SECURE', False)
+    app.config.setdefault('SESSION_COOKIE_HTTPONLY', True)
+
     # --- Flask-Mail Configuration ---
     app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
     app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
