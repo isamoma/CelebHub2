@@ -6,7 +6,7 @@ from . import DB, login_manager, ME, csrf
 from flask_login import login_user, login_required, logout_user, current_user
 from flask import abort
 from werkzeug.utils import secure_filename
-from .forms import LoginForm, CelebrityForm ,DeleteCelebrityForm,FeaturedForm,ContactForm,CelebritySubmissionForm,OnboardingForm
+from .forms import LoginForm, SignupForm, CelebrityForm ,DeleteCelebrityForm,FeaturedForm,ContactForm,CelebritySubmissionForm,OnboardingForm
 from flask_mail import Message
 from app import mail
 from .utils import extract_youtube_id, extract_tiktok_id, extract_spotify_id
@@ -136,7 +136,10 @@ def index():
     else:
         celebs = sorted(celebs_qs, key=lambda x: x.created_at, reverse=True)
 
-    return render_template('index.html', celebs=celebs, q=q)
+    # Provide login/signup forms on the homepage for quick access
+    login_form = LoginForm()
+    signup_form = SignupForm()
+    return render_template('index.html', celebs=celebs, q=q, login_form=login_form, signup_form=signup_form)
 
 @main_bp.route('/celebrity/<slug>')
 def profile(slug):
@@ -213,9 +216,14 @@ def login():
 @main_bp.route('/logout')
 @login_required
 def logout():
-    """Redirect old /logout to /user/logout"""
-    return redirect(url_for('main.user_logout'))
-
+            # Only allow users flagged as admin or listed in ADMIN_USERNAMES
+            allowed = [u.strip() for u in os.getenv('ADMIN_USERNAMES', 'admin').split(',') if u.strip()]
+            if getattr(user, 'is_admin', False) or user.username in allowed:
+                login_user(user)
+                flash('Logged in successfully', 'success')
+                return redirect(url_for('admin.dashboard'))
+            else:
+                flash('You are not authorized to access the admin panel', 'danger')
 @main_bp.route('/user/dashboard')
 @login_required
 def user_dashboard():
@@ -433,10 +441,13 @@ def login():
 @admin_bp.route('/create_admin')
 def create_admin():
     from .models import User
-    u = User(username="admin")
-    u.set_password("admin123")
+    # Create an admin account. Username comes from ADMIN_USERNAMES env (first entry)
+    admin_env = os.getenv('ADMIN_USERNAMES', 'admin')
+    admin_username = [u.strip() for u in admin_env.split(',') if u.strip()][0]
+    u = User(username=admin_username, email=f"{admin_username}@example.com", is_admin=True)
+    u.set_password(os.getenv('ADMIN_PASSWORD', 'admin123'))
     save_object(u)
-    return "Admin created!"
+    return f"Admin '{admin_username}' created!"
 
 @admin_bp.route('/celebrities')
 @login_required

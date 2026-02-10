@@ -5,6 +5,53 @@
   <p class="text-center text-gray-600 dark:text-gray-400 mt-2">Discover Kenya's top artists, actors, and creators.</p>
 </div>
 
+{% if not current_user.is_authenticated %}
+<div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6">
+    <h3 class="text-xl font-semibold mb-4 dark:text-gray-200">Login</h3>
+    <form method="POST" action="{{ url_for('main.user_login') }}" class="space-y-3">
+      {{ login_form.hidden_tag() }}
+      <div>
+        {{ login_form.username.label(class='block text-sm font-medium dark:text-gray-300') }}
+        {{ login_form.username(class='w-full border rounded p-2 dark:bg-gray-700 dark:text-white') }}
+      </div>
+      <div>
+        {{ login_form.password.label(class='block text-sm font-medium dark:text-gray-300') }}
+        {{ login_form.password(class='w-full border rounded p-2 dark:bg-gray-700 dark:text-white') }}
+      </div>
+      <button class="bg-indigo-600 text-white px-4 py-2 rounded">Login</button>
+    </form>
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6">
+    <h3 class="text-xl font-semibold mb-4 dark:text-gray-200">Create account</h3>
+    <form method="POST" action="{{ url_for('main.signup') }}" class="space-y-3">
+      {{ signup_form.hidden_tag() }}
+      <div>
+        {{ signup_form.email.label(class='block text-sm font-medium dark:text-gray-300') }}
+        {{ signup_form.email(class='w-full border rounded p-2 dark:bg-gray-700 dark:text-white') }}
+      </div>
+      <div>
+        {{ signup_form.full_name.label(class='block text-sm font-medium dark:text-gray-300') }}
+        {{ signup_form.full_name(class='w-full border rounded p-2 dark:bg-gray-700 dark:text-white') }}
+      </div>
+      <div>
+        {{ signup_form.password.label(class='block text-sm font-medium dark:text-gray-300') }}
+        {{ signup_form.password(class='w-full border rounded p-2 dark:bg-gray-700 dark:text-white') }}
+      </div>
+      <div>
+        {{ signup_form.password_confirm.label(class='block text-sm font-medium dark:text-gray-300') }}
+        {{ signup_form.password_confirm(class='w-full border rounded p-2 dark:bg-gray-700 dark:text-white') }}
+      </div>
+      <div class="flex items-center">
+        {{ signup_form.agree_terms() }} {{ signup_form.agree_terms.label(class='ml-2 text-sm dark:text-gray-300') }}
+      </div>
+      <button class="bg-green-600 text-white px-4 py-2 rounded">Create account</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
   {% for c in celebs %}
   <article class="bg-white dark:bg-gray-800 rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition">
