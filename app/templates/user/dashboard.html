@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6">
+  <!-- Welcome Header -->
+  <div class="flex justify-between items-start mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">Welcome, {{ current_user.full_name or current_user.username }}</h1>
+      <p class="text-gray-600 dark:text-gray-400 mt-2">Manage your celebrity profile and featured listings</p>
+    </div>
+    <a href="{{ url_for('main.user_logout') }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">Logout</a>
+  </div>
+
+  <!-- Account Information -->
+  <div class="grid md:grid-cols-2 gap-6 mb-6">
+    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+      <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3">Account Information</h3>
+      <ul class="space-y-2 text-sm">
+        <li>
+          <span class="font-medium text-gray-600 dark:text-gray-400">Email:</span>
+          <span class="text-gray-800 dark:text-gray-200">{{ current_user.email }}</span>
+        </li>
+        <li>
+          <span class="font-medium text-gray-600 dark:text-gray-400">Username:</span>
+          <span class="text-gray-800 dark:text-gray-200">{{ current_user.username }}</span>
+        </li>
+        <li>
+          <span class="font-medium text-gray-600 dark:text-gray-400">Member Since:</span>
+          <span class="text-gray-800 dark:text-gray-200">{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else 'N/A' }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+      <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3">Profile Status</h3>
+      <ul class="space-y-2 text-sm">
+        <li>
+          <span class="font-medium text-gray-600 dark:text-gray-400">Account Type:</span>
+          <span class="inline-block bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-2 py-1 rounded text-xs font-semibold">Celebrity Artist</span>
+        </li>
+        <li>
+          <span class="font-medium text-gray-600 dark:text-gray-400">Account Status:</span>
+          <span class="inline-block bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded text-xs font-semibold">Active</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Feature Your Profile Section -->
+  <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900 dark:to-purple-900 rounded-lg p-6 mb-6">
+    <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">⭐ Feature Your Profile</h3>
+    <p class="text-gray-600 dark:text-gray-400 mb-4">
+      Get your profile featured on the homepage for 30 days! Pay Ksh 500 to boost your visibility and reach more fans.
+    </p>
+    
+    <form id="feature-form" class="space-y-3">
+      <div>
+        <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enter M-Pesa Phone Number</label>
+        <div class="flex gap-2">
+          <input 
+            id="phone" 
+            name="phone" 
+            type="text" 
+            placeholder="07XXXXXXXX" 
+            required 
+            pattern="^07[0-9]{8}$"
+            title="Please enter a valid Kenyan phone number (07XXXXXXXX)"
+            class="flex-1 border border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-600 rounded-lg px-4 py-2" 
+          />
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold">
+            Feature (KSh 500)
+          </button>
+        </div>
+        <small class="text-gray-500 dark:text-gray-400">You will receive an M-Pesa prompt on this number</small>
+      </div>
+
+      <div id="feature-msg" class="hidden p-3 rounded-lg text-sm"></div>
+    </form>
+  </div>
+
+  <!-- Info Box -->
+  <div class="bg-blue-50 dark:bg-blue-900 rounded-lg p-4">
+    <h4 class="font-semibold text-blue-900 dark:text-blue-200 mb-2">💡 How It Works</h4>
+    <ul class="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+      <li>✓ Enter your M-Pesa registered phone number</li>
+      <li>✓ You'll receive an M-Pesa prompt to complete the payment</li>
+      <li>✓ Once payment is confirmed, your profile will be featured on the homepage for 30 days</li>
+      <li>✓ Your profile will appear with a Featured badge to increase visibility</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+async function featureMe(e){
+  e.preventDefault();
+  const phone = document.getElementById('phone').value.trim();
+  const msgDiv = document.getElementById('feature-msg');
+  
+  // Validate phone format
+  if(!phone.match(/^07[0-9]{8}$/)) {
+    msgDiv.className = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-3 rounded-lg text-sm';
+    msgDiv.innerText = 'Please enter a valid Kenyan phone number (07XXXXXXXX)';
+    msgDiv.classList.remove('hidden');
+    return false;
+  }
+  
+  try {
+    const res = await fetch('/pay', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({phone, amount:500})
+    });
+    const data = await res.json();
+    msgDiv.classList.remove('hidden');
+    
+    if(res.ok){
+      msgDiv.className = 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded-lg text-sm';
+      msgDiv.innerHTML = '✓ <strong>Payment initiated successfully!</strong><br>Check your phone for the M-Pesa prompt. Reference: <code>' + (data.payment_ref || 'N/A') + '</code>';
+    } else {
+      msgDiv.className = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-3 rounded-lg text-sm';
+      msgDiv.innerText = data.error || 'An error occurred. Please try again.';
+    }
+  } catch(err) {
+    msgDiv.className = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-3 rounded-lg text-sm';
+    msgDiv.innerText = 'Error: ' + err.message;
+    msgDiv.classList.remove('hidden');
+  }
+  return false;
+}
+
+document.getElementById('feature-form').addEventListener('submit', featureMe);
+</script>
+{% endblock %}

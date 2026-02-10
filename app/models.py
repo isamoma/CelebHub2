@@ -48,7 +48,12 @@ class User(UserMixin, Document):
     meta = {'collection': 'users'}
     id = SequenceField(primary_key=True)
     username = StringField(max_length=80, required=True, unique=True)
+    email = StringField(max_length=120, required=True, unique=True)
+    full_name = StringField(max_length=120)  # Celebrity's display name
     password_hash = StringField(max_length=200, required=True)
+    is_admin = BooleanField(default=False)  # Admin flag
+    is_celebrity = BooleanField(default=True)  # Celebrity/user flag
+    created_at = DateTimeField(default=datetime.utcnow)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

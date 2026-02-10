@@ -2,7 +2,7 @@ import os
 import re
 from flask import Blueprint, render_template, current_app, request, redirect, url_for, flash
 from .models import Celebrity, User, CelebritySubmission, OnboardingRegistration, USE_MONGO
-from . import DB, login_manager, ME
+from . import DB, login_manager, ME, csrf
 from flask_login import login_user, login_required, logout_user, current_user
 from flask import abort
 from werkzeug.utils import secure_filename
@@ -145,6 +145,82 @@ def profile(slug):
         abort(404)
     return render_template('profile.html', celeb=celeb)
 
+# User Authentication Routes
+@main_bp.route('/signup', methods=['GET', 'POST'])
+def signup():
+    """User registration for celebrities"""
+    from .forms import SignupForm
+    form = SignupForm()
+    if form.validate_on_submit():
+        # Check if email already exists
+        existing_email = get_user_by_username(form.email.data)
+        if existing_email:
+            flash('Email already registered', 'danger')
+            return redirect(url_for('main.signup'))
+        
+        # Create new user using email as username
+        user = User(
+            username=form.email.data,  # Use email as username
+            email=form.email.data,
+            full_name=form.full_name.data,
+            is_admin=False,
+            is_celebrity=True
+        )
+        user.set_password(form.password.data)
+        save_object(user)
+        
+        # Log user in immediately after signup
+        login_user(user)
+        flash('Account created successfully! Welcome to CelebHub.', 'success')
+        return redirect(url_for('main.user_dashboard'))
+    
+    return render_template('signup.html', form=form)
+
+@main_bp.route('/user/login', methods=['GET', 'POST'])
+def user_login():
+    """Celebrity user login"""
+    from .forms import LoginForm
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = get_user_by_username(form.username.data)
+        if user and user.check_password(form.password.data):
+            # Make sure it's not an admin-only account
+            if user.is_admin is False:
+                login_user(user)
+                flash('Logged in successfully!', 'success')
+                return redirect(url_for('main.user_dashboard'))
+            else:
+                flash('Please use admin login for admin accounts', 'warning')
+        else:
+            flash('Invalid username or password', 'danger')
+    
+    return render_template('user/login.html', form=form)
+
+@main_bp.route('/user/logout')
+@login_required
+def user_logout():
+    """User logout"""
+    logout_user()
+    flash('Logged out successfully', 'success')
+    return redirect(url_for('main.index'))
+
+# Backward compatibility - old routes
+@main_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    """Redirect old /login to /user/login"""
+    return redirect(url_for('main.user_login'))
+
+@main_bp.route('/logout')
+@login_required
+def logout():
+    """Redirect old /logout to /user/logout"""
+    return redirect(url_for('main.user_logout'))
+
+@main_bp.route('/user/dashboard')
+@login_required
+def user_dashboard():
+    """Celebrity user dashboard"""
+    return render_template('user/dashboard.html')
 @main_bp.route('/featured')
 def featured():
     return render_template('featured.html')
@@ -569,8 +645,15 @@ def mpesa_payment():
     passkey = os.getenv('MPESA_PASSKEY')
     callback_url = os.getenv('MPESA_CALLBACK_URL')
 
+    # Choose MPESA base URL depending on environment (sandbox by default)
+    mpesa_env = os.getenv('MPESA_ENV', 'sandbox')
+    if mpesa_env == 'production':
+        base_url = 'https://api.safaricom.co.ke'
+    else:
+        base_url = 'https://sandbox.safaricom.co.ke'
+
     # Generate access token
-    token_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+    token_url = f"{base_url}/oauth/v1/generate?grant_type=client_credentials"
     r = requests.get(token_url, auth=(consumer_key, consumer_secret))
     access_token = r.json().get('access_token')
 
@@ -609,7 +692,8 @@ def mpesa_payment():
         except Exception:
             pass
 
-    res = requests.post("https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest", json=payload, headers=headers)
+    process_url = f"{base_url}/mpesa/stkpush/v1/processrequest"
+    res = requests.post(process_url, json=payload, headers=headers)
 
     result = res.json()
     result['payment_ref'] = payment_ref
@@ -617,6 +701,7 @@ def mpesa_payment():
 
 
 @main_bp.route('/mpesa/callback', methods=['POST'])
+@csrf.exempt
 def mpesa_callback():
     """
     Handle M-Pesa payment callbacks and update celebrity featured status.

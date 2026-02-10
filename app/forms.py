@@ -6,6 +6,25 @@ class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(max=80)])
     password = PasswordField('Password', validators=[DataRequired()])
 
+class SignupForm(FlaskForm):
+    email = EmailField('Email', validators=[DataRequired(), Email()])
+    full_name = StringField('Full Name', validators=[DataRequired(), Length(min=2, max=120)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    password_confirm = PasswordField('Confirm Password', validators=[DataRequired()])
+    agree_terms = BooleanField('I agree to the Terms & Conditions', validators=[DataRequired()])
+    submit = SubmitField('Create Account')
+    
+    def validate_email(form, field):
+        """Check if email is already registered"""
+        from .models import User
+        from mongoengine import DoesNotExist
+        try:
+            User.objects.get(email=field.data)
+            from wtforms import ValidationError
+            raise ValidationError('This email is already registered. Please login or use a different email.')
+        except DoesNotExist:
+            pass  # Email is available
+
 class CelebrityForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(max=140)])
     slug = StringField('Slug', validators=[DataRequired(), Length(max=160)])
