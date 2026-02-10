@@ -76,8 +76,10 @@
     <div id="feature-msg" class="mt-2 text-sm"></div>
   </div>
   {% else %}
-  <div class="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 shadow">
-    <p class="text-sm">Please <a href="{{ url_for('admin.login') }}" class="text-indigo-600">log in</a> to request a featured listing.</p>
+  <div class="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 shadow">
+    <p class="text-sm text-blue-800 dark:text-blue-200">
+      Want to feature your profile? <a href="{{ url_for('main.signup') }}" class="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">Create an account</a> or <a href="{{ url_for('main.user_login') }}" class="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">log in</a> to feature yourself for only Ksh 500.
+    </p>
   </div>
   {% endif %}
 </div>

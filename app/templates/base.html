@@ -21,6 +21,13 @@
           <button class="p-2 rounded-md bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
           type="submit">Search</button>
         </form>
+        {% if current_user.is_authenticated %}
+          <button class="text-sm px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">{{ current_user.full_name or current_user.username }}</button>
+          <a href="{{ url_for('main.user_logout') }}" class="text-sm px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Logout</a>
+        {% else %}
+          <a href="{{ url_for('main.signup') }}" class="text-sm px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Sign Up</a>
+          <a href="{{ url_for('main.user_login') }}" class="text-sm px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Login</a>
+        {% endif %}
         <div class="relative group">
           <button class="text-sm px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Menu ▾</button>
           <div class="absolute right-0 hidden group-hover:block bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-2 w-44">
