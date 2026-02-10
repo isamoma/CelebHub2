@@ -10,29 +10,98 @@
     <div class="flex-1">
       <h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{{ celeb.name }}</h1>
       <p class="text-gray-600 dark:text-gray-400 mt-3">{{ celeb.bio }}</p>
-      <div class="mt-4 space-y-3">
+      <div class="mt-4 space-y-4">
+        <!-- YouTube Embed -->
         {% if celeb.youtube %}
         <div>
-          <h3 class="font-semibold dark:text-gray-200">Video</h3>
+          <h3 class="font-semibold dark:text-gray-200">YouTube</h3>
           <div class="mt-2">
-            <iframe width="560" height="315" src="{{ celeb.youtube }}" frameborder="0" allowfullscreen class="w-full rounded-lg"></iframe>
+            {% if 'youtube.com/embed' in celeb.youtube or 'youtu.be' in celeb.youtube or celeb.youtube|length == 11 %}
+              <!-- It's a video ID or embed URL -->
+              <iframe width="100%" height="315" src="https://www.youtube.com/embed/{{ celeb.youtube if celeb.youtube|length == 11 else celeb.youtube.split('/')[-1] }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="rounded-lg"></iframe>
+            {% else %}
+              <a href="{{ celeb.youtube }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">{{ celeb.youtube }}</a>
+            {% endif %}
           </div>
         </div>
         {% endif %}
+
+        <!-- TikTok Embed -->
         {% if celeb.tiktok %}
         <div>
           <h3 class="font-semibold dark:text-gray-200">TikTok</h3>
-          <a href="{{ celeb.tiktok }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">{{ celeb.tiktok }}</a>
+          <div class="mt-2">
+            {% if 'tiktok.com' in celeb.tiktok %}
+              <blockquote class="tiktok-embed" data-url="{{ celeb.tiktok }}" style="max-width: 325px" cite="{{ celeb.tiktok }}"></blockquote>
+            {% else %}
+              <a href="{{ celeb.tiktok }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">{{ celeb.tiktok }}</a>
+            {% endif %}
+          </div>
         </div>
         {% endif %}
+
+        <!-- Spotify Embed -->
         {% if celeb.spotify %}
         <div>
-          <h3 class="font-semibold dark:text-gray-200">Music</h3>
-          <a href="{{ celeb.spotify }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">{{ celeb.spotify }}</a>
+          <h3 class="font-semibold dark:text-gray-200">Music on Spotify</h3>
+          <div class="mt-2">
+            {% if 'open.spotify.com/embed' in celeb.spotify %}
+              <iframe style="border-radius:12px" src="{{ celeb.spotify }}" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" class="rounded-lg"></iframe>
+            {% elif 'open.spotify.com' in celeb.spotify %}
+              <a href="{{ celeb.spotify }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">Open on Spotify</a>
+            {% else %}
+              <a href="{{ celeb.spotify }}" target="_blank" class="text-indigo-500 dark:text-indigo-400 hover:underline">{{ celeb.spotify }}</a>
+            {% endif %}
+          </div>
         </div>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
+
+<!-- Feature Me Section -->
+<div class="max-w-3xl mx-auto mt-6">
+  {% if current_user.is_authenticated %}
+  <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow">
+    <h3 class="font-semibold text-lg dark:text-gray-200">Feature your profile</h3>
+    <p class="text-sm text-gray-600 dark:text-gray-400">Pay Ksh 500 to have your profile featured for 30 days.</p>
+    <form id="feature-form" class="mt-3" onsubmit="return featureMe(event)">
+      <input type="hidden" name="celebrity_slug" value="{{ celeb.slug }}">
+      <div class="flex gap-2">
+        <input id="phone" name="phone" type="text" placeholder="07XXXXXXXX" required class="border rounded p-2 flex-1" />
+        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded">Feature Me (Ksh 500)</button>
+      </div>
+    </form>
+    <div id="feature-msg" class="mt-2 text-sm"></div>
+  </div>
+  {% else %}
+  <div class="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 shadow">
+    <p class="text-sm">Please <a href="{{ url_for('admin.login') }}" class="text-indigo-600">log in</a> to request a featured listing.</p>
+  </div>
+  {% endif %}
+</div>
+
 {% endblock %}
+
+<script async src="https://www.tiktok.com/embed.js"></script>
+<script>
+async function featureMe(e){
+  e.preventDefault();
+  const phone = document.getElementById('phone').value.trim();
+  const slug = document.querySelector('input[name="celebrity_slug"]').value;
+  const res = await fetch('/pay', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({phone, amount:500, celebrity_slug: slug})
+  });
+  const data = await res.json();
+  const msg = document.getElementById('feature-msg');
+  if(res.ok){
+    msg.innerText = 'Payment initiated. Check your phone for the STK prompt. Reference: ' + (data.payment_ref || '');
+  } else {
+    msg.innerText = data.error || JSON.stringify(data);
+  }
+  return false;
+}
+</script>

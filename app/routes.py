@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from .forms import LoginForm, CelebrityForm ,DeleteCelebrityForm,FeaturedForm,ContactForm,CelebritySubmissionForm,OnboardingForm
 from flask_mail import Message
 from app import mail
+from .utils import extract_youtube_id, extract_tiktok_id, extract_spotify_id
 
 ALLOWED_EXT = {'png','jpg','jpeg','gif'}
 
@@ -287,6 +288,11 @@ def submit_celeb():
             filename = secure_filename(photo.filename)
             photo.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
 
+        # 📌 Normalize social media URLs
+        youtube_id = extract_youtube_id(form.youtube.data) or form.youtube.data
+        tiktok_id = extract_tiktok_id(form.tiktok.data) or form.tiktok.data
+        spotify_id = extract_spotify_id(form.spotify.data) or form.spotify.data
+        
         # 📌 Save to database
         submission = CelebritySubmission(
             name=form.name.data,
@@ -294,9 +300,9 @@ def submit_celeb():
             phone=form.phone.data,
             category=form.category.data,
             bio=form.bio.data,
-            youtube=form.youtube.data,
-            tiktok=form.tiktok.data,
-            spotify=form.spotify.data,
+            youtube=youtube_id,
+            tiktok=tiktok_id,
+            spotify=spotify_id,
             photo_filename=filename
         )
         save_object(submission)
@@ -393,9 +399,9 @@ def approve_submission(id):
         category=sub.category,
         bio=sub.bio,
         photo_filename=sub.photo_filename,
-        youtube=sub.youtube,
-        tiktok=sub.tiktok,
-        spotify=sub.spotify,
+        youtube=sub.youtube or extract_youtube_id(sub.youtube) or sub.youtube,
+        tiktok=sub.tiktok or extract_tiktok_id(sub.tiktok) or sub.tiktok,
+        spotify=sub.spotify or extract_spotify_id(sub.spotify) or sub.spotify,
     )
     save_object(new_celeb)
 
@@ -452,9 +458,14 @@ def add_celeb():
             filename = secure_filename(photo_file.filename)
             save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             photo_file.save(save_path)
+        # Normalize social media URLs
+        youtube_embed = extract_youtube_id(form.youtube.data) if form.youtube.data else None
+        tiktok_embed = extract_tiktok_id(form.tiktok.data) if form.tiktok.data else None
+        spotify_embed = extract_spotify_id(form.spotify.data) if form.spotify.data else None
+        
         new = Celebrity(name=form.name.data, slug=form.slug.data, bio=form.bio.data,
                 category=form.category.data, photo_filename=filename,
-                youtube=form.youtube.data, tiktok=form.tiktok.data, spotify=form.spotify.data,
+                youtube=youtube_embed or form.youtube.data, tiktok=tiktok_embed or form.tiktok.data, spotify=spotify_embed or form.spotify.data,
                 featured=form.featured.data)
         save_object(new)
         flash('Celebrity added', 'success')
@@ -496,14 +507,14 @@ def edit_celeb(cid):
 
             celeb.photo_filename = filename
 
-        # Update text fields
+        # Update text fields (normalize social media URLs)
         celeb.name = form.name.data
         celeb.slug = form.slug.data
         celeb.bio = form.bio.data
         celeb.category = form.category.data
-        celeb.youtube = form.youtube.data
-        celeb.tiktok = form.tiktok.data
-        celeb.spotify = form.spotify.data
+        celeb.youtube = extract_youtube_id(form.youtube.data) or form.youtube.data if form.youtube.data else None
+        celeb.tiktok = extract_tiktok_id(form.tiktok.data) or form.tiktok.data if form.tiktok.data else None
+        celeb.spotify = extract_spotify_id(form.spotify.data) or form.spotify.data if form.spotify.data else None
         
         # ✅ Correctly handle 'featured' checkbox
         celeb.featured = form.featured.data  
@@ -537,35 +548,41 @@ def delete_celebrity(cid):
 
 import requests, base64
 from datetime import datetime
-from flask import Flask, request, jsonify
-from dotenv import load_dotenv
+from flask import request, jsonify
 import os
+import uuid
 
-load_dotenv()
 
-app = Flask(__name__, instance_relative_config=True)
-
-@app.route('/pay', methods=['POST'])
+@main_bp.route('/pay', methods=['POST'])
 def mpesa_payment():
+    # Require login to keep track of who initiated the payment
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+
     phone = request.json.get('phone')
-    amount = request.json.get('amount', 1)
-    
+    amount = int(request.json.get('amount', 1))
+    celeb_slug = request.json.get('celebrity_slug')
+
     consumer_key = os.getenv('MPESA_CONSUMER_KEY')
     consumer_secret = os.getenv('MPESA_CONSUMER_SECRET')
     shortcode = os.getenv('MPESA_SHORTCODE')
     passkey = os.getenv('MPESA_PASSKEY')
     callback_url = os.getenv('MPESA_CALLBACK_URL')
-    
+
     # Generate access token
     token_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
     r = requests.get(token_url, auth=(consumer_key, consumer_secret))
     access_token = r.json().get('access_token')
-    
-    # Create timestamp
+
+    # Create timestamp and password
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     password = base64.b64encode((shortcode + passkey + timestamp).encode()).decode('utf-8')
-    
+
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+
+    # Create a local payment reference so callback can map to celebrity
+    payment_ref = request.json.get('payment_ref') or str(uuid.uuid4())
+
     payload = {
         "BusinessShortCode": shortcode,
         "Password": password,
@@ -576,13 +593,30 @@ def mpesa_payment():
         "PartyB": shortcode,
         "PhoneNumber": phone,
         "CallBackURL": callback_url,
-        "AccountReference": "CelebHub",
+        "AccountReference": payment_ref,
         "TransactionDesc": "Featured Listing Payment"
     }
 
+    # If a celebrity slug was provided, mark the celebrity payment as pending
+    if celeb_slug:
+        try:
+            celeb = Celebrity.objects(slug=celeb_slug).first() if USE_MONGO else Celebrity.query.filter_by(slug=celeb_slug).first()
+            if celeb:
+                celeb.feature_status = 'pending'
+                celeb.feature_payment_id = payment_ref
+                celeb.feature_amount = amount
+                save_object(celeb)
+        except Exception:
+            pass
+
     res = requests.post("https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest", json=payload, headers=headers)
-    return jsonify(res.json())
-@app.route('/mpesa/token')
+
+    result = res.json()
+    result['payment_ref'] = payment_ref
+    return jsonify(result)
+
+
+@main_bp.route('/mpesa/token')
 def generate_token():
     import requests, os
     from requests.auth import HTTPBasicAuth

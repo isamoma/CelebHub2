@@ -20,6 +20,11 @@ class Celebrity(Document):
     tiktok = StringField(max_length=300)
     spotify = StringField(max_length=300)
     featured = BooleanField(default=False)
+    # Payment / feature tracking
+    feature_amount = IntField(default=0)  # amount paid (in KES)
+    feature_status = StringField(max_length=20, default="none")  # none | pending | paid | failed
+    feature_payment_id = StringField(max_length=200)  # payment / transaction id from MPESA
+    featured_until = DateTimeField(required=False)
     created_at = DateTimeField(default=datetime.utcnow)
 
     @property
@@ -27,6 +32,16 @@ class Celebrity(Document):
         if self.photo_filename:
             return f"/static/uploads/{self.photo_filename}"
         return None
+
+    def mark_featured(self, days=30, payment_id=None, amount=0):
+        """Helper to mark a celebrity as featured for `days` days and record payment info."""
+        from datetime import timedelta
+        self.featured = True
+        self.feature_amount = amount
+        self.feature_status = 'paid'
+        self.feature_payment_id = payment_id
+        self.featured_until = datetime.utcnow() + timedelta(days=days)
+        self.save()
 
 
 class User(UserMixin, Document):
