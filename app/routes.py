@@ -691,18 +691,18 @@ def mpesa_payment():
     payment_ref = request.json.get('payment_ref') or str(uuid.uuid4())
 
     payload = {
-            "Password": "MTc0Mzc5YmZiMjc5ZjlhYTliZGJjZjE1OGU5N2RkNzFhNDY3Y2QyZTBjODkzMDU5YjEwZjc4ZTZiNzJhZGExZWQyYzkxOTIwMjYwMjE2MTIzODI4",
-            "BusinessShortCode": "174379",
-            "Timestamp": "20260216123828",
-            "Amount": "1",
-            "PartyA": "254708374149",
-            "PartyB": "174379",
-            "TransactionType": "CustomerPayBillOnline",
-            "PhoneNumber": "254708374149",
-            "TransactionDesc": "Featured Listing Payment",
-            "AccountReference": "Test",
-            "CallBackURL": "https://mydomain.com/mpesa-express-simulate/"
-        }
+        "BusinessShortCode": shortcode,
+        "Password": password,
+        "Timestamp": timestamp,
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": amount,
+        "PartyA": phone,
+        "PartyB": shortcode,
+        "PhoneNumber": phone,
+        "CallBackURL": callback_url,
+        "AccountReference": payment_ref,
+        "TransactionDesc": "Featured Listing Payment"
+    }
 
     # If a celebrity slug was provided, mark the celebrity payment as pending
     if celeb_slug:
