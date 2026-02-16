@@ -96,13 +96,15 @@ async function featureMe(e){
   const phone = document.getElementById('phone').value.trim();
   const msgDiv = document.getElementById('feature-msg');
   
-  // Validate phone format
-  if(!phone.match(/^07[0-9]{8}$/)) {
+  // This regex allows: +2547..., 2547..., 07..., 7..., +2541..., 01... etc.
+const kenyanPhoneRegex = /^(?:254|\+254|0)?([17][0-9]{8})$/;
+
+if (!phone.match(kenyanPhoneRegex)) {
     msgDiv.className = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-3 rounded-lg text-sm';
-    msgDiv.innerText = 'Please enter a valid Kenyan phone number (07XXXXXXXX)';
+    msgDiv.innerText = 'Please enter a valid Kenyan phone number (e.g., 0712345678 or 254712345678)';
     msgDiv.classList.remove('hidden');
     return false;
-  }
+}
   
   try {
     const res = await fetch('/pay', {
