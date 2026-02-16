@@ -655,75 +655,79 @@ import uuid
 
 @main_bp.route('/pay', methods=['POST'])
 def mpesa_payment():
-    # Require login to keep track of who initiated the payment
     if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
 
-    phone = request.json.get('phone')
-    amount = int(request.json.get('amount', 1))
-    celeb_slug = request.json.get('celebrity_slug')
+    # 1. Clean the incoming data
+    data = request.get_json()
+    phone = data.get('phone', '').replace('+', '').strip()
+    amount = int(data.get('amount', 1))
+    celeb_slug = data.get('celebrity_slug')
 
+    # 2. Load Credentials
     consumer_key = os.getenv('MPESA_CONSUMER_KEY')
     consumer_secret = os.getenv('MPESA_CONSUMER_SECRET')
     shortcode = os.getenv('MPESA_SHORTCODE')
     passkey = os.getenv('MPESA_PASSKEY')
     callback_url = os.getenv('MPESA_CALLBACK_URL')
 
-    # Choose MPESA base URL depending on environment (sandbox by default)
     mpesa_env = os.getenv('MPESA_ENV', 'sandbox')
-    if mpesa_env == 'production':
-        base_url = 'https://api.safaricom.co.ke'
-    else:
-        base_url = 'https://sandbox.safaricom.co.ke'
+    base_url = 'https://api.safaricom.co.ke' if mpesa_env == 'production' else 'https://sandbox.safaricom.co.ke'
 
-    # Generate access token
-    token_url = f"{base_url}/oauth/v1/generate?grant_type=client_credentials"
-    r = requests.get(token_url, auth=(consumer_key, consumer_secret))
-    access_token = r.json().get('access_token')
+    try:
+        # 3. Secure Token Generation
+        token_url = f"{base_url}/oauth/v1/generate?grant_type=client_credentials"
+        r = requests.get(token_url, auth=(consumer_key, consumer_secret), timeout=10)
+        r.raise_for_status() # This prevents the "Unexpected <" error
+        access_token = r.json().get('access_token')
 
-    # Create timestamp and password
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    password = base64.b64encode((shortcode + passkey + timestamp).encode()).decode('utf-8')
+        # 4. Prepare Security Credentials
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        password_str = f"{shortcode}{passkey}{timestamp}"
+        password = base64.b64encode(password_str.encode()).decode('utf-8')
 
-    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        payment_ref = data.get('payment_ref') or str(uuid.uuid4())
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
 
-    # Create a local payment reference so callback can map to celebrity
-    payment_ref = request.json.get('payment_ref') or str(uuid.uuid4())
+        # 5. Payload Construction
+        payload = {
+            "BusinessShortCode": shortcode,
+            "Password": password,
+            "Timestamp": timestamp,
+            "TransactionType": "CustomerPayBillOnline",
+            "Amount": amount,
+            "PartyA": phone,
+            "PartyB": shortcode,
+            "PhoneNumber": phone,
+            "CallBackURL": callback_url,
+            "AccountReference": payment_ref, # M-Pesa returns this in metadata
+            "TransactionDesc": f"Payment for {celeb_slug}"
+        }
 
-    payload = {
-        "BusinessShortCode": shortcode,
-        "Password": password,
-        "Timestamp": timestamp,
-        "TransactionType": "CustomerPayBillOnline",
-        "Amount": amount,
-        "PartyA": phone,
-        "PartyB": shortcode,
-        "PhoneNumber": phone,
-        "CallBackURL": callback_url,
-        "AccountReference": payment_ref,
-        "TransactionDesc": "Featured Listing Payment"
-    }
-
-    # If a celebrity slug was provided, mark the celebrity payment as pending
-    if celeb_slug:
-        try:
+        # Handle DB Pending State
+        if celeb_slug:
             celeb = Celebrity.objects(slug=celeb_slug).first() if USE_MONGO else Celebrity.query.filter_by(slug=celeb_slug).first()
             if celeb:
                 celeb.feature_status = 'pending'
                 celeb.feature_payment_id = payment_ref
                 celeb.feature_amount = amount
-                save_object(celeb)
-        except Exception:
-            pass
+                # Ensure you have a global save_object function or use celeb.save()
+                celeb.save() if USE_MONGO else DB.session.commit()
 
-    process_url = f"{base_url}/mpesa/stkpush/v1/processrequest"
-    res = requests.post(process_url, json=payload, headers=headers)
+        # 6. Hit the STK Push Endpoint
+        process_url = f"{base_url}/mpesa/stkpush/v1/processrequest"
+        res = requests.post(process_url, json=payload, headers=headers, timeout=15)
+        
+        response_data = res.json()
+        response_data['payment_ref'] = payment_ref
+        return jsonify(response_data)
 
-    result = res.json()
-    result['payment_ref'] = payment_ref
-    return jsonify(result)
-
-
+    except requests.exceptions.RequestException as e:
+        # This catches network errors and returns JSON, NOT HTML
+        return jsonify({'error': 'Safaricom connection failed', 'details': str(e)}), 503
+    except Exception as e:
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+    
 @main_bp.route('/mpesa/callback', methods=['POST'])
 @csrf.exempt
 def mpesa_callback():
